@@ -1,0 +1,10 @@
+use std
+
+use "types.use"
+
+pkg pg =
+	const write : (tab : int[:] -> void)
+;;
+
+const write = {tab
+}

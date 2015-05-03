@@ -1,0 +1,33 @@
+use std
+
+pkg pg =
+	type rules = struct
+		infile	: byte[:]	/* input file we read */
+		start	: byte[:]	/* start production */
+		pkgname	: byte[:]	/* the package name to output */
+		uses	: byte[:][:]
+		myr	: byte[:]
+		rules	: rule#[:]
+		toks	: tok#[:]
+	;;
+
+	type dfa = struct
+		initial	: std.size
+		states	: int[256][:]
+		accept	: int[:]	/* accept, tok id pairs */
+	;;
+
+	type rule = struct
+		id	: int
+		name	: byte[:]
+		terms	: byte[:][:]
+		action	: byte[:]
+	;;
+
+	type tok = struct
+		id	: int
+		isregex	: bool
+		name	: byte[:]
+		pat	: byte[:]
+	;;
+;;

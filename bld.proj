@@ -1,0 +1,10 @@
+bin mpgen =
+	dfa.myr
+	lalr.myr
+	main.myr
+	parse.myr
+	types.myr
+	write.myr
+;;
+
+sub = docs ;;

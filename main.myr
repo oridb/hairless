@@ -1,0 +1,25 @@
+use std
+
+use "dfa.use"
+use "lalr.use"
+use "parse.use"
+use "types.use"
+use "write.use"
+
+const main = {args
+	var tab, dfa
+	var parsed
+	var rules
+
+	parsed = std.optparse(args, &[
+		.argdesc="inputs...", 
+		.minargs=1
+	])
+	for f in parsed.args
+		rules = pg.parse(f)
+		dfa = pg.gendfa(rules)
+		tab = pg.genlalrtab(rules)
+		pg.write(tab)
+	;;
+}
+
