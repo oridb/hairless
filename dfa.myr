@@ -2,99 +2,153 @@ use std
 use regex
 
 use "types.use"
+use "nfa.use"
 
 pkg pg =
-	const gendfa	: (rl : rules# -> dfa#)
+	const mkdfa	: (nfa : nfa# -> dfa#)
 ;;
 
-const gendfa = {rl
+
+const mkdfa = {nfa
+	var states, edgehas, e, init
+	var statemap
+	var j, p, c
 	var dfa
 
+	std.fmtinstall(std.typeof(init), bsdump, [][:])
+
 	dfa = std.zalloc()
-	addstate(dfa)
-	for t in rl.toks
-		if t.isregex
-			addretok(dfa, t)
-		else
-			addstrtok(dfa, t)
+	dfa.accept = std.mkbs()
+
+	statemap = std.mkht(sethash, seteq)
+
+	states = std.slpush([][:], std.mkbs())
+	states = std.slpush(states, std.mkbs())
+
+	edgehas = std.slpush([][:], std.mkbs())
+	edgehas = std.slpush(edgehas, std.mkbs())
+
+	std.htput(statemap, states[0], 0)
+	dfa.trans = std.slzalloc(2)
+
+	init = std.mkbs()
+	std.bsput(init, 0)
+	closure(nfa, init, states[1])
+	std.htput(statemap, states[1], 1)
+
+	std.put("dfa states[1] = {}\n", states[1])
+	p = 1
+	j = 0
+	while j <= p
+		std.put("states[{}] = {}, p = {}\n", j, states[j], p)
+		for c = 0; c < 256; c++
+			e = dfaedge(nfa, states[j], c castto(byte))
+			if std.bshas(e, 1)
+				std.bsput(dfa.accept, j)
+			;;
+			match std.htget(statemap, e)
+			| `std.None:
+				p++
+				std.htput(statemap, e, p)
+				states = std.slpush(states, e)
+				dfa.trans = std.slpush(dfa.trans, std.sldup([(c, p)][:]))
+				edgehas = std.slpush(edgehas, std.mkbs())
+				std.bsput(edgehas[p], c)
+			| `std.Some st:
+				std.bsfree(e)
+				if st != 0 && !std.bshas(edgehas[j], c)
+					dfa.trans[j] = std.slpush(dfa.trans[j], (c, st))
+				;;
+			;;
 		;;
+		j++
 	;;
-
+	
 	dumpdfa(dfa)
-
 	-> dfa
 }
 
-const addstrtok = {dfa, tok
-	var st, next
-
-	st = 0
-	for b in tok.pat
-		next = dfa.states[st][b]
-		if next == -1
-			next = addstate(dfa)
-			dfa.states[st][b] = next
-		;;
-		st = next
-	;;
-	accept(dfa, st, tok.id)
-}
-
-const addretok = {dfa, re
-	match regex.parse(re.pat)
-	| `std.Ok ast:
-		todfa(dfa, ast)
-	| `std.Fail m:
-		std.fatal(1, "bad regex /%s/: %s\n", re.pat, regex.failmsg(m))
-	;;
-}
-
-const todfa = {dfa, ast
-	std.put("dfa-ing\n")
-}
-
-const accept = {dfa, st, id
-	var oldsz, sz
-
-	oldsz = dfa.accept.len
-	sz = (st + 1) castto(std.size)
-	dfa.accept = std.slzgrow(dfa.accept, std.max(oldsz, sz))
-	std.slfill(dfa.accept[oldsz:], -1)
-	dfa.accept[st] = id
-}
-
-const addstate = {dfa -> int
-	var i
-
-	dfa.states = std.slzgrow(dfa.states, dfa.states.len + 1)
-	for i = 0; i < 256; i++
-		dfa.states[dfa.states.len - 1][i] = -1
-	;;
-	-> (dfa.states.len - 1) castto(int)
-}
-
 const dumpdfa = {dfa
-	var i, j
 	var st
 
-	std.put(" states = [\n")
-	for j = 0; j < dfa.states.len; j++
-		std.put("\t%i: [ ", j)
-		st = dfa.states[j]
-		for i = 0; i < st.len; i++
-			if st[i] != -1
-				std.put("%i: %i ", i, st[i])
-			;;
+	st = 0
+	std.put("dfa:\n")
+	std.put("\taccept: {}\n", dfa.accept)
+	for edges in dfa.trans
+		std.put("\t{}:", st++)
+		for (lbl, dst) in edges
+			std.put(" {}({}): {}", lbl castto(char), lbl, dst)
 		;;
-		std.put("]\n")
+		std.put("\n")
 	;;
-	std.put("]\n")
+}
 
-	std.put("accept = [ ")
-	for i = 0; i < dfa.accept.len; i++
-		if dfa.accept[i] != -1
-			std.put("%i:id=%i, ", i, dfa.accept[i])
+
+const dfaedge = {nfa, states, sym
+	var set
+	var i
+
+	set = std.mkbs()
+	for i = 0; i < std.bsmax(states); i++
+		if std.bshas(states, i)
+			edge(nfa, i, sym, set)
 		;;
 	;;
-	std.put("]\n")
+	closure(nfa, set, set)
+	-> set
+}
+
+const edge = {nfa, st, sym, set : std.bitset#
+	for `Byte (s, b) in nfa.states[st]
+		if b == sym
+			std.bsput(set, s)
+			std.put("byte {}: {}\n", b castto(char), s)
+		;;
+	;;
+	for `Range (s, lo, hi) in nfa.states[st]
+		if sym >= lo && sym <= hi
+			std.bsput(set, s)
+		;;
+	;;
+}
+
+const closure = {nfa, states, set
+	var i
+
+	for i = 0; i < std.bsmax(states); i++
+		if std.bshas(states, i)
+			stateclosure(nfa, i, set)
+		;;
+	;;
+}
+
+const stateclosure = {nfa, state, set
+	for `Eps st in nfa.states[state]
+		if std.bshas(set, st)
+			continue
+		;;
+		std.bsput(set, st)
+		stateclosure(nfa, st, set)
+	;;
+}
+
+const sethash = {set
+	-> std.slhash(set.bits)
+}
+
+const seteq = {a, b
+	-> std.sleq(a.bits, b.bits)
+}
+
+const bsdump = {sb, ap, opts
+	var i, bs
+
+	bs = std.vanext(ap)
+	std.sbputs(sb, "set{")
+	for i = 0; i < std.bsmax(bs); i++
+		if std.bshas(bs, i)
+			std.sbfmt(sb, "{},", i)
+		;;
+	;;
+	std.sbputs(sb, "}")
 }

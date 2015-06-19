@@ -2,12 +2,13 @@ use std
 
 use "dfa.use"
 use "lalr.use"
+use "nfa.use"
 use "parse.use"
 use "types.use"
 use "write.use"
 
 const main = {args
-	var tab, dfa
+	var tab, dfa, nfa
 	var parsed
 	var rules
 
@@ -17,7 +18,8 @@ const main = {args
 	])
 	for f in parsed.args
 		rules = pg.parse(f)
-		dfa = pg.gendfa(rules)
+		nfa = pg.mknfa(rules)
+		dfa = pg.mkdfa(nfa)
 		tab = pg.genlalrtab(rules)
 		pg.write(tab)
 	;;

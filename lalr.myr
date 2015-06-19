@@ -7,17 +7,17 @@ pkg pg =
 ;;
 
 const genlalrtab = {rl
-	std.put("infile:\t%s\n", rl.infile)
-	std.put("pkg:\t%s\n", rl.pkgname)
-	std.put("start:\t%s\n", rl.start)
+	std.put("infile:\t{}\n", rl.infile)
+	std.put("pkg:\t{}\n", rl.pkgname)
+	std.put("start:\t{}\n", rl.start)
 	std.put("use:\t")
 	for u in rl.uses
-		std.put("%s ", u)
+		std.put("{} ", u)
 	;;
 	std.put("\n")
-	std.put("myr:\t{%s}\n", rl.myr)
+	std.put("myr:\t{{{}}}\n", rl.myr)
 	for t in rl.toks
-		std.put("tok %s : %s\n", t.name, t.pat)
+		std.put("tok {} : {}\n", t.name, t.pat)
 	;;
 	for r in rl.rules
 		dumprule(r)
@@ -27,10 +27,10 @@ const genlalrtab = {rl
 }
 
 const dumprule = {r
-	std.put("%s(%i)\t: ", r.name, r.id)
+	std.put("{}({})\t: ", r.name, r.id)
 	for t in r.terms
-		std.put("%s ", t)
+		std.put("{} ", t)
 	;;
-	std.put("{%s}\n", r.action)
+	std.put("{{{}}}\n", r.action)
 }
 

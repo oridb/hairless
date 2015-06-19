@@ -24,14 +24,17 @@ const parse = {f
 	-> rl
 }
 
-const failparse = {p : parser#, msg, args : ...
-	var buf : byte[1024]
-	var ap
-	var sl
+$noret const failparse = {p : parser#, msg, args : ...
+	var sb, str, ap
 
 	ap = std.vastart(&args)
-	sl = std.bfmtv(buf[:], msg, ap)
-	std.fput(1, "%s:%i: %s", p.fname, p.line, sl)
+	sb = std.mksb()
+	std.sbfmt(sb, "{}:{}: ", p.fname, p.line)
+	std.sbfmtv(sb, msg, &ap)
+
+	str = std.sbfin(sb)
+	std.put("{}", str)
+	std.slfree(str)
 	std.exit(1)
 }
 
@@ -63,7 +66,7 @@ const directive = {p, rl
 	| `std.Some "tok":
 		token(p, rl)
 	| `std.Some d:
-		failparse(p, "unknown directive %s\n", d)
+		failparse(p, "unknown directive {}\n", d)
 	| `std.None:
 		failparse(p, "expected word after '%'\n")
 	;;
@@ -75,7 +78,7 @@ const token = {p, rl
 	var name, pat, tok : tok#
 	var isregex
 
-	name = expect(p, word(p), "expected token name after '%%tok'\n")
+	name = expect(p, word(p), "expected token name after '%tok'\n")
 	skipspace(p)
 	if !matchc(p, '=')
 		failparse(p, "expected '=' after token name\n")
@@ -90,7 +93,7 @@ const token = {p, rl
 		isregex = false
 		pat = expect(p, quoted(p, '"'), "expected token regex\n")
 	| c:
-		failparse(p, "invalid token pattern starting with '%c'\n", c)
+		failparse(p, "invalid token pattern starting with '{}'\n", c)
 	;;
 	tok = std.mk([
 		.id = tokid++,
@@ -324,7 +327,7 @@ const mkparser = {path
 	p.fname = std.sldup(path)
 	match std.slurp(path)
 	| `std.Ok d:	p.data = d
-	| `std.Fail _:	std.fatal(1, "could not open '%s'\n", path)
+	| `std.Fail _:	std.fatal("could not open '{}'\n", path)
 	;;
 	p.rest = p.data
 	-> p

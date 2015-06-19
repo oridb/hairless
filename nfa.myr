@@ -1,0 +1,156 @@
+use std
+use regex
+
+use "types.use"
+
+pkg pg =
+	const mknfa	: (rl : rules# -> nfa#)
+;;
+
+
+const mknfa = {rl
+	var nfa, accept
+
+	nfa = std.zalloc()
+	addstate(nfa)	/* initial state */
+	accept = addstate(nfa)
+	for t in rl.toks
+		if t.isregex
+			addre(nfa, t, accept)
+		else
+			addstr(nfa, t, accept)
+		;;
+	;;
+	nfadump(nfa)
+	-> nfa
+}
+
+const addstr = {nfa, str, accept
+	var st, new
+	st = addstate(nfa)
+	trans(nfa, 0, `Eps st)
+	for b in str.pat
+		new = addstate(nfa)
+		trans(nfa, st, `Byte (new, b))
+		st = new
+	;;
+	trans(nfa, new, `Eps accept)
+}
+
+const addre = {nfa, pat, accept
+	var st
+
+	match regex.parse(pat.pat)
+	| `std.Ok re:
+		st = addstate(nfa)
+		trans(nfa, 0, `Eps st)
+		st = re2nfa(nfa, st, re)
+		trans(nfa, st, `Eps accept)
+	| `std.Fail m:
+		std.fatal("invalid regex {}: {}\n", pat.pat, regex.failmsg(m))
+	;;
+}
+
+const re2nfa = {nfa, start, re
+	var buf : byte[std.Maxcharlen]
+	var s, t, u, v
+	var i
+
+	match re#
+	| `regex.Alt (l, r):
+		s = addstate(nfa)
+		trans(nfa, start, `Eps s)
+		t = re2nfa(nfa, s, l)
+
+		t = addstate(nfa)
+		trans(nfa, start, `Eps t)
+		u = re2nfa(nfa, t, r)
+
+		v = addstate(nfa)
+		trans(nfa, t, `Eps v)
+		trans(nfa, u, `Eps v)
+		-> v
+
+	| `regex.Cat (l, r):
+		s = re2nfa(nfa, start, l)
+		-> re2nfa(nfa, s, r)
+
+	| `regex.Star r:
+		s = re2nfa(nfa, start, r)
+		trans(nfa, s, `Eps start)
+		-> start
+	| `regex.Plus r:
+		s = re2nfa(nfa, start, r)
+		t = re2nfa(nfa, s, r)
+		trans(nfa, t, `Eps s)
+		-> s
+	| `regex.Quest r:
+		s = re2nfa(nfa, start, r)
+		trans(nfa, start, `Eps s)
+		-> s
+
+	| `regex.Byte b:
+		s = addstate(nfa)
+		trans(nfa, start, `Byte (s, b))
+		-> s
+
+	| `regex.Chr chr:
+		std.encode(buf[:], chr)
+		s = start
+		for i = 0; i < std.charlen(chr); i++
+			t = addstate(nfa)
+			trans(nfa, s, `Byte (t, buf[i]))
+			s = t
+		;;
+		-> s
+
+	| `regex.Ranges rl:
+		std.put("Xstart = {}\n", start)
+		s = addstate(nfa)
+		for r in rl
+			if r[0] > 0x7f || r[1] > 0x7f
+				std.put("unicode ranges not yet supported\n")
+			;;
+			trans(nfa, start, `Range (s, 'a' castto(byte), 'z' castto(byte)))
+		;;
+		-> s
+	| `regex.Cap (id, r):
+		-> re2nfa(nfa, start, r)
+	| `regex.Rplus r:	std.fatal("reluctant operators not supported\n")
+	| `regex.Rstar r:	std.fatal("reluctant operators not supported\n")
+	| `regex.Bol:	std.fatal("'^' specifier not supported\n")
+	| `regex.Eol:	std.fatal("'$' specifier not supported\n")
+	| `regex.Bow:	std.fatal("'\\<' specifier not supported\n")
+	| `regex.Eow:	std.fatal("'\\>' specifier not supported\n")
+	;;
+}
+
+const trans = {nfa, st, tr
+	nfa.states[st] = std.slpush(nfa.states[st], tr)
+}
+
+const addstate = {nfa
+	nfa.states = std.slpush(nfa.states, [][:])
+	-> nfa.states.len - 1
+}
+
+
+const nfadump = {nfa
+	var i
+
+	std.put("digraph g = {{\n")
+	for i = 0; i < nfa.states.len; i++
+		std.put("\t/* st = {} */\n", i)
+		for tr in nfa.states[i]
+			match tr
+			| `Eps st:
+				std.put("\t{} -> {} [label=\"ɛ\"]\n", i, st)
+			| `Byte (st, b):
+				std.put("\t{} -> {} [label=\"{}\"]\n", i, st, b castto(char))
+			| `Range (st, lo, hi):
+				std.put("\t{} -> {} [label=\"{}-{}\"]\n", i, st, lo castto(char), hi castto(char))
+			;;
+		;;
+	;;
+	std.put("}}\n")
+}

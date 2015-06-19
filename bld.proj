@@ -1,5 +1,6 @@
 bin mpgen =
 	dfa.myr
+	nfa.myr
 	lalr.myr
 	main.myr
 	parse.myr

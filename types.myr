@@ -13,8 +13,19 @@ pkg pg =
 
 	type dfa = struct
 		initial	: std.size
-		states	: int[256][:]
-		accept	: int[:]	/* accept, tok id pairs */
+		trans	: (int, int)[:][:]
+		accept	: std.bitset#	/* accept, tok id pairs */
+	;;
+
+	type nfatrans = union
+		`Eps std.size	/* epsilon transition */
+		`Byte (std.size, byte)	/* single byte */
+		`Range (std.size, byte, byte)	/* byte range; compressed list of bytes */
+	;;
+
+	type nfa = struct
+		/* state 0 is initial, state 1 is our accept state */
+		states	: nfatrans[:][:]
 	;;
 
 	type rule = struct
