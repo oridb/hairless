@@ -47,7 +47,7 @@ const writedfa = {f, dfa
 	bio.put(f, "\t\tmatch (state, str[off])\n")
 	for trans in dfa.trans
 		for (chr, next) in trans
-			bio.put(f, "\t\t| ({}, {}):", st, chr)
+			bio.put(f, "\t\t| ({}, {}):\n", st, chr)
 			bio.put(f, "\t\t\tstate = {}\n", next)
 			if std.bshas(dfa.accept, st)
 				bio.put(f, "\t\t\tmark = {}\n", st)

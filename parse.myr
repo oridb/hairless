@@ -64,7 +64,9 @@ const directive = {p, rl
 		checkunset(p, rl.myr, "'pkg' already sepecified\n")
 		rl.myr = expect(p, myrlit(p), "expected myrddin literal after 'myr'\n")
 	| `std.Some "tok":
-		token(p, rl)
+		token(p, rl, false)
+	| `std.Some "skip":
+		token(p, rl, true)
 	| `std.Some d:
 		failparse(p, "unknown directive {}\n", d)
 	| `std.None:
@@ -74,7 +76,7 @@ const directive = {p, rl
 
 var tokid = 0
 
-const token = {p, rl
+const token = {p, rl, skip
 	var name, pat, tok : tok#
 	var isregex
 
@@ -100,6 +102,7 @@ const token = {p, rl
 		.isregex = isregex,
 		.name = name,
 		.pat = pat,
+		.skip = skip
 	])
 	rl.toks = std.slpush(rl.toks, tok)
 }

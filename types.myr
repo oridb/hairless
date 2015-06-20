@@ -11,6 +11,11 @@ pkg pg =
 		toks	: tok#[:]
 	;;
 
+	type lr = struct
+		/* ids are faster to work with, so we set up mappings */
+		name2id	: std.htab(byte[:], int)
+	;;
+
 	type dfa = struct
 		initial	: std.size
 		trans	: (int, int)[:][:]
@@ -37,8 +42,10 @@ pkg pg =
 
 	type tok = struct
 		id	: int
-		isregex	: bool
 		name	: byte[:]
 		pat	: byte[:]
+		skip	: bool
+		isregex	: bool
 	;;
 ;;
+
