@@ -50,10 +50,14 @@ const mkdfa = {nfa
 			| `std.None:
 				p++
 				std.htput(statemap, e, p)
+				/* add new state */
 				states = std.slpush(states, e)
-				dfa.trans = std.slpush(dfa.trans, std.sldup([(c, p)][:]))
+				dfa.trans = std.slpush(dfa.trans, [][:])
 				edgehas = std.slpush(edgehas, std.mkbs())
-				std.bsput(edgehas[p], c)
+
+				/* add the transition to it */
+				dfa.trans[j] = std.slpush(dfa.trans[j], (c, p))
+				std.bsput(edgehas[j], c)
 			| `std.Some st:
 				std.bsfree(e)
 				if st != 0 && !std.bshas(edgehas[j], c)

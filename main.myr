@@ -1,4 +1,5 @@
 use std
+use bio
 
 use "dfa.use"
 use "lalr.use"
@@ -9,19 +10,40 @@ use "write.use"
 
 const main = {args
 	var tab, dfa, nfa
-	var parsed
+	var path, out
 	var rules
+	var cmd
 
-	parsed = std.optparse(args, &[
+	cmd = std.optparse(args, &[
 		.argdesc="inputs...", 
 		.minargs=1
 	])
-	for f in parsed.args
+	for f in cmd.args
+		/* read the input file */
 		rules = pg.parse(f)
 		nfa = pg.mknfa(rules)
 		dfa = pg.mkdfa(nfa)
 		tab = pg.genlalrtab(rules)
-		pg.write(tab)
+
+		path = swapsuffix(f, ".mpg", ".myr")
+		std.put("writing to {}\n", path)
+		out = std.try(bio.create(path, bio.Wr, 0o666))
+		pg.writehdr(out, rules)
+		pg.writedfa(out, dfa)
+		pg.writelalr(out, tab)
+		bio.close(out)
+		std.slfree(path)
 	;;
 }
 
+const swapsuffix = {str, suff, repl
+	if std.hassuffix(str, suff)
+		std.put("str = {}, str[:str.len - suff.len] = {}, repl = {}\n", \
+			str, str[:str.len - suff.len], repl)
+		-> std.strcat(str[:str.len - suff.len], repl)
+	else
+		std.put("str = {}, repl = {}\n", \
+			str, repl)
+		-> std.strcat(str, repl)
+	;;
+}
