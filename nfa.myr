@@ -88,12 +88,6 @@ const re2nfa = {nfa, start, re
 		s = re2nfa(nfa, start, r)
 		trans(nfa, start, `Eps s)
 		-> s
-
-	| `regex.Byte b:
-		s = addstate(nfa)
-		trans(nfa, start, `Byte (s, b))
-		-> s
-
 	| `regex.Chr chr:
 		std.encode(buf[:], chr)
 		s = start
