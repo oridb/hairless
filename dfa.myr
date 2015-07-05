@@ -15,8 +15,6 @@ const mkdfa = {nfa
 	var j, p, c
 	var dfa
 
-	std.fmtinstall(std.typeof(init), bsdump, [][:])
-
 	dfa = std.zalloc()
 	dfa.accept = std.mkbs()
 
@@ -142,17 +140,4 @@ const sethash = {set
 
 const seteq = {a, b
 	-> std.sleq(a.bits, b.bits)
-}
-
-const bsdump = {sb, ap, opts
-	var i, bs
-
-	bs = std.vanext(ap)
-	std.sbputs(sb, "set{")
-	for i = 0; i < std.bsmax(bs); i++
-		if std.bshas(bs, i)
-			std.sbfmt(sb, "{},", i)
-		;;
-	;;
-	std.sbputs(sb, "}")
 }
