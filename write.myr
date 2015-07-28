@@ -6,7 +6,7 @@ use "types.use"
 pkg pg =
 	const writehdr	: (f : bio.file#, rules : rules# -> void)
 	const writedfa	: (f : bio.file#, dfa : dfa# -> void)
-	const writelalr : (f : bio.file#, tab : int[:] -> void)
+	const writelalr : (f : bio.file#, tab : lalr# -> void)
 ;;
 
 const writehdr = {f, rules
@@ -43,22 +43,36 @@ const writedfa = {f, dfa
 	bio.put(f, "\tmark = 0\n")
 	bio.put(f, "\tlen = 0\n")
 	bio.put(f, "\toff = 0\n")
-	bio.put(f, "\twhile off < str.len\n")
-	bio.put(f, "\t\tmatch (state, str[off])\n")
+	bio.put(f, "\tif off >= str.len\n")
+	bio.put(f, "\t\t-> 0 /* Eof */\n")
+	bio.put(f, "\t;;\n")
+	bio.put(f, "\twhile skip\n")
+	bio.put(f, "\t\twhile off < str.len\n")
+	bio.put(f, "\t\t\tmatch (state, str[off])\n")
 	for trans in dfa.trans
 		for (chr, next) in trans
-			bio.put(f, "\t\t| ({}, {}):\n", st, chr)
-			bio.put(f, "\t\t\tstate = {}\n", next)
-			if std.bshas(dfa.accept, st)
-				bio.put(f, "\t\t\tmark = {}\n", st)
-				bio.put(f, "\t\t\tlen = off + 1\n")
+			bio.put(f, "\t\t\t| ({}, {}):\n", st, chr)
+			bio.put(f, "\t\t\t\tstate = {}\n", next)
+			match std.htget(dfa.accept, st)
+			| `std.Some tok:
+				bio.put(f, "\t\t\t\tmark = {}\n", st)
+				bio.put(f, "\t\t\t\tlen = off + 1\n")
+				bio.put(f, "\t\t\t\ttok = {}\n", tok)
+				if std.bshas(dfa.skip, st)
+					bio.put(f, "\t\t\t\tskip = true\n")
+				else 
+					bio.put(f, "\t\t\t\tskip = false\n")
+				;;
+			| `std.None:
+				/* nothing */
 			;;
 		;;
 		st++
 	;;
-	bio.put(f, "\t\t| _: break\n")
+	bio.put(f, "\t\t\t| _: break\n")
+	bio.put(f, "\t\t\t;;\n")
+	bio.put(f, "\t\t\toff++\n")
 	bio.put(f, "\t\t;;\n")
-	bio.put(f, "\t\toff++\n")
 	bio.put(f, "\t;;\n")
 	bio.put(f, "\tif len != 0\n")
 	bio.put(f, "\t\t-> (str[:len], str[len:])\n")

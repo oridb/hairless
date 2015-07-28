@@ -6,22 +6,60 @@ pkg pg =
 	const parse	: (f : byte[:] -> rules#)
 ;;
 
+
 type parser = struct
 	/* parse input */
 	data	: byte[:]
 	rest	: byte[:]
 	fname	: byte[:]
 	line	: int
+
+	start	: byte[:]
+	nextsym	: sym
+	symid	: std.htab(byte[:], sym)#
+	symname	: std.htab(sym, byte[:])#
+	isterm	: std.bitset#
 ;;
 
 const parse = {f
 	var rl, p
+
 	p = mkparser(f)
-	rl = std.mk([.infile=f])
+	rl = std.mk([
+		.infile = f,
+		.isterm = p.isterm,
+		.symname = p.symname,
+	])
+
+	/* we always have Eof token */
+	std.bsput(p.isterm, symid(p, "Eof"))
 	while !iseof(p)
 		toplev(p, rl)
 	;;
+
+	rl.nsym = p.nextsym
+	if rl.start == TokEof
+		std.fatal("missing %start <start symbol>\n")
+	;;
 	-> rl
+}
+
+const mkparser = {path
+	var p
+
+	p = std.mk([
+		.line = 1,
+		.fname = std.sldup(path),
+		.symid = std.mkht(std.strhash, std.streq),
+		.symname = std.mkht(std.inthash, std.inteq),
+		.isterm = std.mkbs(),
+	])
+	match std.slurp(path)
+	| `std.Ok d:	p.data = d
+	| `std.Fail _:	std.fatal("could not open '{}'\n", path)
+	;;
+	p.rest = p.data
+	-> p
 }
 
 $noret const failparse = {p : parser#, msg, args : ...
@@ -49,14 +87,18 @@ const toplev = {p, rl
 
 const directive = {p, rl
 	var u
+	var s
 
 	match word(p)
 	| `std.Some "start":
-		checkunset(p, rl.start, "'start' already sepecified\n")
-		rl.start = expect(p, word(p), "expected word after 'start'\n")
+		if rl.start != TokEof
+			failparse(p, "'start' already sepecified\n")
+		;;
+		s = expect(p, word(p), "expected start symbol name after 'start'\n")
+		rl.start = symid(p, s)
 	| `std.Some "pkg":
 		checkunset(p, rl.pkgname, "'pkg' already sepecified\n")
-		rl.pkgname = expect(p, word(p), "expected word after 'pkg'\n")
+		rl.pkgname = expect(p, word(p), "expected package name after 'pkg'\n")
 	| `std.Some "use":
 		u = expect(p, usename(p), "expected use name after 'pkg'\n")
 		rl.uses = std.slpush(rl.uses, u)
@@ -73,8 +115,6 @@ const directive = {p, rl
 		failparse(p, "expected word after '%'\n")
 	;;
 }
-
-var tokid = 0
 
 const token = {p, rl, skip
 	var name, pat, tok : tok#
@@ -98,12 +138,13 @@ const token = {p, rl, skip
 		failparse(p, "invalid token pattern starting with '{}'\n", c)
 	;;
 	tok = std.mk([
-		.id = tokid++,
+		.sym = symid(p, name),
 		.isregex = isregex,
 		.name = name,
 		.pat = pat,
-		.skip = skip
+		.skip = skip,
 	])
+	std.bsput(p.isterm, tok.sym)
 	rl.toks = std.slpush(rl.toks, tok)
 }
 
@@ -119,7 +160,7 @@ const rule = {p, rl
 			failparse(p, "expected ':' after rule name\n")
 		;;
 		while true
-			r = rulebody(p, name)
+			r = rulebody(p, symid(p, name))
 			addrule(p, rl, r, name)
 			skipspace(p)
 			if matchc(p, ';')
@@ -132,15 +173,14 @@ const rule = {p, rl
 	;;
 }
 
-var nextruleid = 0
-const rulebody = {p, name -> rule#
-	var terms
+const rulebody = {p, lhs -> rule#
+	var rhs
 	var action
 
-	terms = [][:]
+	rhs = [][:]
 	while true
 		match word(p)
-		| `std.Some w:	terms = std.slpush(terms, w)
+		| `std.Some w:	rhs = std.slpush(rhs, symid(p, w))
 		| `std.None:	break
 		;;
 	;;
@@ -154,7 +194,18 @@ const rulebody = {p, name -> rule#
 	else
 		action = ""
 	;;
-	-> std.mk([.id=nextruleid++, .name=name, .terms=terms, .action=action])
+	-> std.mk([.lhs=lhs, .rhs=rhs, .act=action])
+}
+
+const symid = {p, name
+	match std.htget(p.symid, name)
+	| `std.Some id:
+		-> id
+	| `std.None:
+		std.htput(p.symid, name, p.nextsym)
+		std.htput(p.symname, p.nextsym, name)
+		-> p.nextsym++
+	;;
 }
 
 generic expect = {p, tok : std.option(@a), msg -> @a
@@ -322,21 +373,8 @@ const iseof = {p
 	-> p.rest.len == 0
 }
 
-const mkparser = {path
-	var p
-
-	p = std.zalloc()
-	p.line = 1
-	p.fname = std.sldup(path)
-	match std.slurp(path)
-	| `std.Ok d:	p.data = d
-	| `std.Fail _:	std.fatal("could not open '{}'\n", path)
-	;;
-	p.rest = p.data
-	-> p
-}
-
 const addrule = {p, rl, r, name
+	r.id = rl.rules.len
 	rl.rules = std.slpush(rl.rules, r)
 }
 

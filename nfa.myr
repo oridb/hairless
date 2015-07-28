@@ -5,27 +5,40 @@ use "types.use"
 
 pkg pg =
 	const mknfa	: (rl : rules# -> nfa#)
+	const nfadump	: (nfa : nfa# -> void)
 ;;
 
 
-const mknfa = {rl
-	var nfa, accept
+/*
+Creates an NFA from a list of tokens.
 
-	nfa = std.zalloc()
+This doesn't try to be the most efficient NFA, just
+one that works. It also keeps track of which symbol
+each 'main branch' of the NFA corresponds to.
+*/
+const mknfa = {rl
+	var nfa
+
+	nfa = std.mk([
+		.skip = std.mkbs(),
+		.accept = std.mkht(std.inthash, std.inteq),
+	])
 	addstate(nfa)	/* initial state */
-	accept = addstate(nfa)
 	for t in rl.toks
 		if t.isregex
-			addre(nfa, t, accept)
+			addre(nfa, t)
 		else
-			addstr(nfa, t, accept)
+			addstr(nfa, t)
 		;;
 	;;
+	/*
 	nfadump(nfa)
+	*/
 	-> nfa
 }
 
-const addstr = {nfa, str, accept
+/* adds a quoted string token. This is just a byte sequence. */
+const addstr = {nfa, str
 	var st, new
 	st = addstate(nfa)
 	trans(nfa, 0, `Eps st)
@@ -34,10 +47,14 @@ const addstr = {nfa, str, accept
 		trans(nfa, st, `Byte (new, b))
 		st = new
 	;;
-	trans(nfa, new, `Eps accept)
+	std.htput(nfa.accept, st, str.sym)
+	if str.skip
+		std.bsput(nfa.skip, str.sym)
+	;;
 }
 
-const addre = {nfa, pat, accept
+/* This adds a Myrddin flavor regex to the NFA. */
+const addre = {nfa, pat
 	var st
 
 	match regex.parse(pat.pat)
@@ -45,7 +62,10 @@ const addre = {nfa, pat, accept
 		st = addstate(nfa)
 		trans(nfa, 0, `Eps st)
 		st = re2nfa(nfa, st, re)
-		trans(nfa, st, `Eps accept)
+		std.htput(nfa.accept, st, pat.sym)
+		if pat.skip
+			std.bsput(nfa.skip, pat.sym)
+		;;
 	| `std.Fail m:
 		std.fatal("invalid regex {}: {}\n", pat.pat, regex.failmsg(m))
 	;;
@@ -72,6 +92,7 @@ const re2nfa = {nfa, start, re
 		-> v
 
 	| `regex.Cat (l, r):
+		/* just concatenate the NFAs. */
 		s = re2nfa(nfa, start, l)
 		-> re2nfa(nfa, s, r)
 
@@ -99,11 +120,10 @@ const re2nfa = {nfa, start, re
 		-> s
 
 	| `regex.Ranges rl:
-		std.put("Xstart = {}\n", start)
 		s = addstate(nfa)
 		for r in rl
 			if r[0] > 0x7f || r[1] > 0x7f
-				std.put("unicode ranges not yet supported\n")
+				std.fatal("unicode ranges not yet supported\n")
 			;;
 			trans(nfa, start, `Range (s, 'a' castto(byte), 'z' castto(byte)))
 		;;
@@ -120,22 +140,32 @@ const re2nfa = {nfa, start, re
 }
 
 const trans = {nfa, st, tr
-	nfa.states[st] = std.slpush(nfa.states[st], tr)
+	nfa.edges[st] = std.slpush(nfa.edges[st], tr)
 }
 
 const addstate = {nfa
-	nfa.states = std.slpush(nfa.states, [][:])
-	-> nfa.states.len - 1
+	nfa.edges = std.slpush(nfa.edges, [][:])
+	-> nfa.edges.len - 1
 }
 
-
 const nfadump = {nfa
+	var keys, sep
 	var i
 
+	keys = std.htkeys(nfa.accept)
+	std.put("accept = {{")
+	sep = ""
+	for k in keys
+		std.put("{}=>{}{}", k, std.htgetv(nfa.accept, k, -1), sep)
+		sep = ", "
+	;;
+	std.put("}}\n")
+	std.slfree(keys)
+
 	std.put("digraph g = {{\n")
-	for i = 0; i < nfa.states.len; i++
+	for i = 0; i < nfa.edges.len; i++
 		std.put("\t/* st = {} */\n", i)
-		for tr in nfa.states[i]
+		for tr in nfa.edges[i]
 			match tr
 			| `Eps st:
 				std.put("\t{} -> {} [label=\"ɛ\"]\n", i, st)

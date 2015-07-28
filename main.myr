@@ -21,10 +21,13 @@ const main = {args
 	for f in cmd.args
 		/* read the input file */
 		rules = pg.parse(f)
+
+		/* generate the various tables */
 		nfa = pg.mknfa(rules)
 		dfa = pg.mkdfa(nfa)
 		tab = pg.genlalrtab(rules)
 
+		/* and output */
 		path = swapsuffix(f, ".mpg", ".myr")
 		std.put("writing to {}\n", path)
 		out = std.try(bio.create(path, bio.Wr, 0o666))

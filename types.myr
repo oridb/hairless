@@ -1,25 +1,28 @@
 use std
 
 pkg pg =
+	type sym = int
+
 	type rules = struct
-		infile	: byte[:]	/* input file we read */
-		start	: byte[:]	/* start production */
+		infile	: byte[:]
+		start	: sym
 		pkgname	: byte[:]	/* the package name to output */
 		uses	: byte[:][:]
 		myr	: byte[:]
 		rules	: rule#[:]
 		toks	: tok#[:]
-	;;
 
-	type lr = struct
-		/* ids are faster to work with, so we set up mappings */
-		name2id	: std.htab(byte[:], int)
+		nsym	: sym
+		isterm	: std.bitset#
+		symname : std.htab(sym, byte[:])#
+		
 	;;
 
 	type dfa = struct
 		initial	: std.size
 		trans	: (int, int)[:][:]
-		accept	: std.bitset#	/* accept, tok id pairs */
+		accept	: std.htab(int, sym)#	/* accept, tok id pairs */
+		skip	: std.bitset#
 	;;
 
 	type nfatrans = union
@@ -30,22 +33,31 @@ pkg pg =
 
 	type nfa = struct
 		/* state 0 is initial, state 1 is our accept state */
-		states	: nfatrans[:][:]
+		edges	: nfatrans[:][:]
+		accept	: std.htab(std.size, sym)#
+		skip	: std.bitset#
+	;;
+
+	type lalr = struct
+		start	: sym
 	;;
 
 	type rule = struct
 		id	: int
+		lhs	: sym
+		rhs	: sym[:]
 		name	: byte[:]
-		terms	: byte[:][:]
-		action	: byte[:]
+		act	: byte[:]
 	;;
 
 	type tok = struct
-		id	: int
+		sym	: sym
 		name	: byte[:]
 		pat	: byte[:]
 		skip	: bool
 		isregex	: bool
 	;;
+
+	const TokEof	: sym = 0
 ;;
 

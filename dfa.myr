@@ -6,59 +6,73 @@ use "nfa.use"
 
 pkg pg =
 	const mkdfa	: (nfa : nfa# -> dfa#)
+	const dumpdfa	: (dfa : dfa# -> void)
 ;;
 
 
+/*
+creates a DFA from an NFA using the fairly standard subset algorithm.
+*/
 const mkdfa = {nfa
-	var states, edgehas, e, init
+	var states, e
 	var statemap
 	var j, p, c
 	var dfa
 
-	dfa = std.zalloc()
-	dfa.accept = std.mkbs()
+	dfa = std.mk([
+		.accept = std.mkht(std.inthash, std.inteq),
+		.trans = std.slzalloc(2),
+		.skip = nfa.skip,
+	])
 
+	/* 
+	We use this for fastish lookups to check if the state
+	has already been seen
+	*/
 	statemap = std.mkht(sethash, seteq)
 
+	/* the failure state and the initial states are constructed */
 	states = std.slpush([][:], std.mkbs())
 	states = std.slpush(states, std.mkbs())
 
-	edgehas = std.slpush([][:], std.mkbs())
-	edgehas = std.slpush(edgehas, std.mkbs())
+	/* set up our initial NFA state */
+	std.bsput(states[1], 0)
+	closure(dfa, nfa, states[1], states[1], 1)
 
+	/* we've seen both of these states */
 	std.htput(statemap, states[0], 0)
-	dfa.trans = std.slzalloc(2)
-
-	init = std.mkbs()
-	std.bsput(init, 0)
-	closure(nfa, init, states[1])
 	std.htput(statemap, states[1], 1)
 
-	std.put("dfa states[1] = {}\n", states[1])
+	/*
+	standard subset construction -- either the dragon boook or
+	modern compiler implementation in ML have a good treatment
+	of it.
+	*/
 	p = 1
 	j = 0
 	while j <= p
-		std.put("states[{}] = {}, p = {}\n", j, states[j], p)
+		/* loop through each byte value */
 		for c = 0; c < 256; c++
-			e = dfaedge(nfa, states[j], c castto(byte))
-			if std.bshas(e, 1)
-				std.bsput(dfa.accept, j)
-			;;
+			/* and add the states we can reach along this DFA state's NFA edges*/
+			e = dfaedge(dfa, nfa, states[j], j, c castto(byte))
 			match std.htget(statemap, e)
 			| `std.None:
+				/* If we didn't have it, this is a new state */
 				p++
 				std.htput(statemap, e, p)
 				/* add new state */
 				states = std.slpush(states, e)
 				dfa.trans = std.slpush(dfa.trans, [][:])
-				edgehas = std.slpush(edgehas, std.mkbs())
 
 				/* add the transition to it */
 				dfa.trans[j] = std.slpush(dfa.trans[j], (c, p))
-				std.bsput(edgehas[j], c)
 			| `std.Some st:
+				/*
+				otherwise, we've already got it -- add a transition if
+				this isn't a dead edge.
+				*/
 				std.bsfree(e)
-				if st != 0 && !std.bshas(edgehas[j], c)
+				if st != 0
 					dfa.trans[j] = std.slpush(dfa.trans[j], (c, st))
 				;;
 			;;
@@ -66,74 +80,104 @@ const mkdfa = {nfa
 		j++
 	;;
 	
+	/*
 	dumpdfa(dfa)
+	*/
 	-> dfa
 }
 
-const dumpdfa = {dfa
-	var st
-
-	st = 0
-	std.put("dfa:\n")
-	std.put("\taccept: {}\n", dfa.accept)
-	for edges in dfa.trans
-		std.put("\t{}:", st++)
-		for (lbl, dst) in edges
-			std.put(" {}({}): {}", lbl castto(char), lbl, dst)
-		;;
-		std.put("\n")
-	;;
-}
-
-
-const dfaedge = {nfa, states, sym
+/*
+computes the closure of all NFA states that this DFA
+state can reach
+*/
+const dfaedge = {dfa, nfa, states, dstate, byte
 	var set
 	var i
 
 	set = std.mkbs()
+	closure(dfa, nfa, set, set, dstate)
 	for i = 0; i < std.bsmax(states); i++
 		if std.bshas(states, i)
-			edge(nfa, i, sym, set)
+			nfaedge(dfa, nfa, i, dstate, byte, set)
 		;;
 	;;
-	closure(nfa, set, set)
+	closure(dfa, nfa, set, set, dstate)
 	-> set
 }
 
-const edge = {nfa, st, sym, set : std.bitset#
-	for `Byte (s, b) in nfa.states[st]
-		if b == sym
+/* 
+follows all consuming edges for a single NFA state
+*/
+const nfaedge = {dfa, nfa, st, dstate, byte, set
+	addaccept(dfa, nfa, st, dstate)
+	for `Byte (s, b) in nfa.edges[st]
+		if b == byte 
 			std.bsput(set, s)
-			std.put("byte {}: {}\n", b castto(char), s)
 		;;
 	;;
-	for `Range (s, lo, hi) in nfa.states[st]
-		if sym >= lo && sym <= hi
+	for `Range (s, lo, hi) in nfa.edges[st]
+		if byte >= lo && byte <= hi
 			std.bsput(set, s)
 		;;
 	;;
 }
 
-const closure = {nfa, states, set
+/*
+takes the closure of a set of NFA states
+that correspond to the DFA state dstate,
+putting the result into the set 'set'.
+*/
+const closure = {dfa, nfa, states, set, dstate
 	var i
 
 	for i = 0; i < std.bsmax(states); i++
 		if std.bshas(states, i)
-			stateclosure(nfa, i, set)
+			stateclosure(dfa, nfa, i, dstate, set)
 		;;
 	;;
 }
 
-const stateclosure = {nfa, state, set
-	for `Eps st in nfa.states[state]
-		if std.bshas(set, st)
+/* 
+recursively follow all epsilon transitions, tracking
+whether they are accepting states.
+*/
+const stateclosure = {dfa, nfa, state, dstate, set
+	addaccept(dfa, nfa, state, dstate)
+	for `Eps next in nfa.edges[state]
+		if std.bshas(set, next)
 			continue
 		;;
-		std.bsput(set, st)
-		stateclosure(nfa, st, set)
+		std.bsput(set, next)
+		stateclosure(dfa, nfa, next, dstate, set)
 	;;
 }
 
+/*
+If we accept a state in the NFA, then we want to accept
+the DFA state that has it. Since a DFA state corresponds
+to many NFA states, we need conflict resolution.
+
+Pick the first state that was defined in the %tok list,
+and use it. Since we number in order, the first one defined
+has the lowest number.
+
+We should probably come up with better conflict resolution:
+strings before regex?
+*/
+const addaccept = {dfa, nfa, st, d
+	var oldsym
+
+	match std.htget(nfa.accept, st)
+	| `std.None:	/* nothing */
+	| `std.Some sym:
+		oldsym = std.htgetv(dfa.accept, d, sym)
+		if sym <= oldsym
+			std.htput(dfa.accept, d, sym)
+		;;
+	;;
+}
+
+/* just useful utilities for hashing/comparing sets */
 const sethash = {set
 	-> std.slhash(set.bits)
 }
@@ -141,3 +185,23 @@ const sethash = {set
 const seteq = {a, b
 	-> std.sleq(a.bits, b.bits)
 }
+
+const dumpdfa = {dfa
+	var st
+
+	st = 0
+	std.put("dfa:\n")
+	for edges in dfa.trans
+		std.put("\t{}:", st)
+		for (lbl, dst) in edges
+			std.put(" {}({}): {}", lbl castto(char), lbl, dst)
+		;;
+		match std.htget(dfa.accept, st)
+		| `std.Some sym:	std.put(" accept: {}", sym)
+		| _:
+		;;
+		std.put("\n")
+		st++
+	;;
+}
+
