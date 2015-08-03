@@ -40,7 +40,21 @@ pkg pg =
 
 	type lalr = struct
 		start	: sym
+		states	: state#[:]
+		shift	: (int, int, sym)[:]
+		reduce	: (int, int)[:]
 	;;
+
+	type state = struct
+		items	: item[:]
+		has	: std.bitset#
+	;;
+
+	type item = struct
+		rule	: rule#
+		dot	: int
+	;;
+
 
 	type rule = struct
 		id	: int

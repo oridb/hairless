@@ -1,0 +1,310 @@
+use std
+
+use "types.use"
+
+pkg pg =
+	const genlr0tab : (rl : rules# -> lalr#)
+	const dumplr0tab : (rl : rules# -> void)
+;;
+
+/* Creates a LR(0) table from a set of rules and terminals. */
+const genlr0tab = {rl
+	var dead, i0 : state#
+	var lr
+	var i
+
+	lr = std.mk([.states=[][:]])
+
+	/* dead state */
+	dead = std.mk([
+		.items = [][:],
+		.has = std.mkbs()
+	])
+	addstate(lr, dead);
+
+	/* initial state, from the augmented rules */
+	i0 = std.mk([
+		.items = std.sldup([[.rule = augmented(rl), .dot = 0]][:]),
+		.has = std.mkbs()
+	])
+	stclosure(rl, lr, i0)
+	addstate(lr, i0);
+
+	/* generate the tables */
+	addshift(rl, lr)
+	addreduce(rl, lr)
+
+	dumplalrtab(rl)
+	for i = 0; i < lr.states.len; i++
+		std.put("i{}\n", i)
+		dumpstate(rl, lr.states[i])
+	;;
+
+	for (f, t, s) in lr.shift
+		std.put("i{} =={}==> i{}\n", f, symstr(rl, s), t)
+	;;
+	-> lr
+}
+
+const addreduce = {rl, lr
+	var i
+
+	for i = 0; i < lr.states.len; i++
+		for itm in lr.states[i].items
+			if itm.dot != itm.rule.rhs.len
+				continue
+			;;
+			lr.reduce = std.slpush(lr.reduce, (i, itm.rule.id))
+		;;
+	;;
+}
+
+const addshift = {rl, lr
+	var changed, stchanged, echanged
+	var sid, eid
+	var i, sym
+
+	changed = true
+	while changed
+		changed = false
+		for i = 0; i < lr.states.len; i++
+			for itm in lr.states[i].items
+				if itm.dot < itm.rule.rhs.len && itm.rule.rhs[itm.dot] == 0
+					addedge(lr, i, 1 << 30, TokEof)
+				;;
+			;;
+			/* skip the Eof transition; it's useless. We already know the accept state. */
+			for sym = 1; sym < rl.nsym; sym++
+				match stgoto(rl, lr, lr.states[i], sym) 
+				| `std.Some st:
+					(sid, stchanged) = addstate(lr, st)
+					(eid, echanged) = addedge(lr, i, sid, sym)
+					changed = stchanged || echanged
+				| `std.None:
+					continue
+				;;
+			;;
+		;;
+	;;
+}
+
+/*
+Computes the goto of an item set. This is the closure what you would get if you
+advanced the dot from before @x to after @x. For example, if you had this item
+set:
+
+	X: @W Y b
+	Y: @W Y
+	Z: @T b
+
+Then taking the goto of it WRT 'W' will give the following set:
+
+	X: W @Y b
+	Y: W @Y
+	Z: @T b
+
+The function below computes all the gotos of all the symbols.
+
+*/
+const stgoto = {rl, lr, itm, sym
+	var items
+	var succ
+	var dot
+
+	/*std.put("building successors with {}\n", symstr(rl, sym))*/
+	items = [][:]
+	for elt in itm.items
+		if elt.dot == elt.rule.rhs.len
+			continue
+		;;
+		dot = elt.rule.rhs[elt.dot]
+		if dot != sym
+			continue
+		;;
+		items = std.slpush(items, [
+			.rule = elt.rule,
+			.dot = elt.dot + 1])
+	;;
+	if items.len > 0
+		succ = std.mk([
+			.items = items,
+			.has = std.mkbs(),
+		])
+		stclosure(rl, lr, succ)
+		-> `std.Some succ
+	else
+		-> `std.None
+	;;
+}
+
+/*
+takes the closure of an item set. This means that for every
+nonterminal after a dot, we follow it and add all of the items
+with a RHS that consist of that nonterminal. For example, given
+the grammar:
+
+	X: W Y b
+	Y: c d
+	W: x
+
+ and the item set:
+
+ 	X: W @Y b
+
+The closure would be:
+
+	X: W @Y b
+	W: @x
+*/
+const stclosure = {rl, lr, itms
+	var sym
+	var changed
+
+	changed = true
+	dumpstate(rl, itms)
+	while changed
+		changed = false
+		for itm in itms.items
+			if itm.dot == itm.rule.rhs.len
+				continue
+			;;
+			sym = itm.rule.rhs[itm.dot]
+			for r in rl.rules
+				if r.lhs != sym
+					continue
+				;;
+				if std.bshas(itms.has, r.id)
+					continue
+				;;
+				changed = true
+				std.bsput(itms.has, r.id)
+				itms.items = std.slpush(itms.items, [.rule = r, .dot = 0])
+				break
+			;;
+		;;
+	;;
+	std.sort(itms.items, itemcmp)
+}
+
+const addstate = {lr, st
+	var i
+
+	for i = 0; i < lr.states.len; i++
+		if stateeq(lr.states[i], st)
+			-> (i, false)
+		;;
+	;;
+	lr.states = std.slpush(lr.states, st)
+	-> (lr.states.len, true)
+}
+
+const addedge = {lr, from, to, sym
+	var i
+
+	i = 0
+	for (f, t, s) in lr.shift
+		if f == from && t == to && s == sym
+			-> (i, false)
+		;;
+		i++
+	;;
+	lr.shift = std.slpush(lr.shift, (from, to, sym))
+	-> (lr.shift.len, true)
+}
+
+const stateeq = {a, b
+	var i
+
+	if a.items.len != b.items.len
+		-> false
+	;;
+	for i = 0; i < a.items.len; i++
+		if a.items[i].dot != b.items[i].dot
+			-> false
+		;;
+		if a.items[i].rule.id != b.items[i].rule.id
+			-> false
+		;;
+	;;
+	-> true
+}
+
+const itemcmp = {a, b
+	-> std.numcmp(a.rule.id, b.rule.id)
+}
+
+/* creates the initial augmented state. */
+const augmented = {rl
+	std.htput(rl.symname, rl.nsym, "$start")
+	-> std.mk([
+		.lhs = rl.nsym,
+		.rhs = std.sldup([rl.start, TokEof][:]),
+		.name = ".s0",
+		.act = "ACCEPT"
+	])
+}
+
+const dumpstate = {rl, is
+	for itm in is.items
+		std.put("\t")
+		dumpitm(rl, itm)
+	;;
+}
+
+const dumpitm = {rl, itm
+	var r, i
+
+	r = itm.rule
+	std.put("{}\t: ", symstr(rl, r.lhs))
+	i = 0
+	for t in r.rhs
+		if i == itm.dot
+			std.put("@") /* more noticable than a period */
+		;;
+		std.put("{} ", symstr(rl, t))
+		i++
+	;;
+	if i == itm.dot
+		std.put("@") /* more noticable than a period */
+	;;
+	std.put("{{{}}}\n", r.act)
+}
+
+const symstr = {rl, sym
+	match std.htget(rl.symname, sym)
+	| `std.Some str:	-> str
+	| `std.None:	std.put("no sym {}\n", sym)
+		-> "???"
+	;;
+}
+
+const dumplalrtab = {rl
+	/*
+	std.put("infile:\t{}\n", rl.infile)
+	std.put("pkg:\t{}\n", rl.pkgname)
+	std.put("start:\t{}\n", rl.start)
+	std.put("use:\t")
+	for u in rl.uses
+		std.put("{} ", u)
+	;;
+	std.put("\n")
+	std.put("myr:\t{{{}}}\n", rl.myr)
+	for t in rl.toks
+		std.put("tok {} : {}\n", t.name, t.pat)
+	;;
+	for r in rl.rules
+		dumprule(r)
+	;;
+	*/
+}
+
+/*
+const dumprule = {rl, r
+	std.put("{}\t: ", symstr(rl, r.lhs))
+	for t in r.rhs
+		std.put("{} ", symstr(rl, t))
+	;;
+	std.put("{{{}}}\n", r.act)
+}
+*/
+

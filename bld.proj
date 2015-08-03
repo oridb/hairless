@@ -1,7 +1,7 @@
 bin mpgen =
 	dfa.myr
 	nfa.myr
-	lalr.myr
+	lr0.myr
 	main.myr
 	parse.myr
 	types.myr

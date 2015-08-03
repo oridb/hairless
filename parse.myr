@@ -374,7 +374,7 @@ const iseof = {p
 }
 
 const addrule = {p, rl, r, name
-	r.id = rl.rules.len
+	r.id = rl.rules.len + 1
 	rl.rules = std.slpush(rl.rules, r)
 }
 

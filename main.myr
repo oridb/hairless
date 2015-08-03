@@ -2,7 +2,7 @@ use std
 use bio
 
 use "dfa.use"
-use "lalr.use"
+use "lr0.use"
 use "nfa.use"
 use "parse.use"
 use "types.use"
@@ -25,15 +25,15 @@ const main = {args
 		/* generate the various tables */
 		nfa = pg.mknfa(rules)
 		dfa = pg.mkdfa(nfa)
-		tab = pg.genlalrtab(rules)
+		tab = pg.genlr0tab(rules)
 
 		/* and output */
 		path = swapsuffix(f, ".mpg", ".myr")
 		std.put("writing to {}\n", path)
 		out = std.try(bio.create(path, bio.Wr, 0o666))
 		pg.writehdr(out, rules)
-		pg.writedfa(out, dfa)
-		pg.writelalr(out, tab)
+		pg.writedfa(out, rules, dfa)
+		pg.writelr0(out, rules, tab)
 		bio.close(out)
 		std.slfree(path)
 	;;

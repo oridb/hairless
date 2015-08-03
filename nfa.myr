@@ -39,7 +39,6 @@ const mknfa = {rl
 
 /* adds a quoted string token. This is just a byte sequence. */
 const addstr = {nfa, str
-	var st, new
 	st = addstate(nfa)
 	trans(nfa, 0, `Eps st)
 	for b in str.pat
@@ -51,6 +50,8 @@ const addstr = {nfa, str
 	if str.skip
 		std.bsput(nfa.skip, str.sym)
 	;;
+
+	var st, new
 }
 
 /* This adds a Myrddin flavor regex to the NFA. */
@@ -71,6 +72,7 @@ const addre = {nfa, pat
 	;;
 }
 
+/* straightforward conversion of regex AST to NFA */
 const re2nfa = {nfa, start, re
 	var buf : byte[std.Maxcharlen]
 	var s, t, u, v
@@ -122,6 +124,7 @@ const re2nfa = {nfa, start, re
 	| `regex.Ranges rl:
 		s = addstate(nfa)
 		for r in rl
+			/* FIXME: this is preventing '.' from working. */
 			if r[0] > 0x7f || r[1] > 0x7f
 				std.fatal("unicode ranges not yet supported\n")
 			;;

@@ -5,8 +5,8 @@ use "types.use"
 
 pkg pg =
 	const writehdr	: (f : bio.file#, rules : rules# -> void)
-	const writedfa	: (f : bio.file#, dfa : dfa# -> void)
-	const writelalr : (f : bio.file#, tab : lalr# -> void)
+	const writedfa	: (f : bio.file#, rules : rules#, dfa : dfa# -> void)
+	const writelr0	: (f : bio.file#, rules : rules#, lr : lalr# -> void)
 ;;
 
 const writehdr = {f, rules
@@ -15,36 +15,25 @@ const writehdr = {f, rules
 		bio.put(f, "use {}\n", u)
 	;;
 	bio.put(f, "pkg {} =\n", rules.pkgname)
-	bio.put(f, "\tconst parse	: (str : byte[:] -> void)\n")
+	bio.put(f, "\tconst parse	: (str : byte[:] -> bool)\n")
 	bio.put(f, ";;\n")
 
-	bio.put(f, "const parse = {{str\n")
-	bio.put(f, "\tvar tok\n")
-	bio.put(f, "\twhile true\n")
-	bio.put(f, "\t\t(tok, str) = readtok(str)\n")
-	bio.put(f, "\t\tif tok.len > 0\n")
-	bio.put(f, "\t\t\tstd.put(\"tok: {{}}\\n\", tok)\n")
-	bio.put(f, "\t\telse\n")
-	bio.put(f, "\t\t\tstd.put(\"eof\\n\")\n")
-	bio.put(f, "\t\t\tbreak\n")
-	bio.put(f, "\t\t;;\n")
-	bio.put(f, "\t;;\n")
-	bio.put(f, "}}\n")
 }
 
-const writedfa = {f, dfa
+const writedfa = {f, rl, dfa
 	var st
 
 	st = 0
 	bio.put(f, "const readtok = {{str\n")
-	bio.put(f, "\tvar state, off, mark, len\n")
+	bio.put(f, "\tvar state, off, mark, len, skip, tok\n")
 	bio.put(f, "\n")
 	bio.put(f, "\tstate = 1\n")
 	bio.put(f, "\tmark = 0\n")
 	bio.put(f, "\tlen = 0\n")
 	bio.put(f, "\toff = 0\n")
+	bio.put(f, "\tskip = false\n")
 	bio.put(f, "\tif off >= str.len\n")
-	bio.put(f, "\t\t-> 0 /* Eof */\n")
+	bio.put(f, "\t\ttok = 0 /* Eof */\n")
 	bio.put(f, "\t;;\n")
 	bio.put(f, "\twhile skip\n")
 	bio.put(f, "\t\twhile off < str.len\n")
@@ -75,13 +64,107 @@ const writedfa = {f, dfa
 	bio.put(f, "\t\t;;\n")
 	bio.put(f, "\t;;\n")
 	bio.put(f, "\tif len != 0\n")
-	bio.put(f, "\t\t-> (str[:len], str[len:])\n")
+	bio.put(f, "\t\t-> (tok, str[:len], str[len:])\n")
 	bio.put(f, "\telse\n")
-	bio.put(f, "\t\t-> (\"\", str[len:])\n")
+	bio.put(f, "\t\t-> (0, \"\", str[len:])\n")
 	bio.put(f, "\t;;\n")
 	bio.put(f, "}}\n")
 	bio.put(f, "\n")
 }
 
-const writelalr = {f, tab
+const writelr0 = {f, rl, lr
+	var tab
+	var s
+	var i
+
+	tab = std.slzalloc(lr.states.len)
+	for i = 0; i < tab.len; i++
+		tab[i] = std.slzalloc(rl.nsym castto(std.size))
+	;;
+
+	for (src, dst, sym) in lr.shift
+		tab[src][sym] = dst
+	;;
+
+	for (src, rule) in lr.reduce
+		for i = 0; i < rl.nsym; i++
+			if !std.bshas(rl.isterm, i)
+				continue
+			;;
+			if tab[src][i] > 0
+				std.put("state {}@{}: shift/reduce conflict\n", src, rule)
+			elif tab[src][i] < 0
+				std.put("state {}@{}: reduce/reduce conflict\n", src, rule)
+			else
+				tab[src][i] = -rule castto(int)
+			;;
+		;;
+	;;
+
+	bio.put(f, "const gram = [\n")
+	bio.put(f, "/*\t\t")
+	for s = 0; s < rl.nsym; s++
+		bio.put(f, "{}\t", symstr(rl, s))
+	;;
+	bio.put(f, "*/\n")
+	i = 0;
+	for row in tab
+		bio.put(f, "/*{}*/\t[", i++)
+		for col in row
+			bio.put(f, "\t{},", col)
+		;;
+		bio.put(f, "],\n")
+	;;
+	bio.put(f, "]\n")
+
+	bio.put(f, "const rulelen = [\n")
+	bio.put(f, "\t-1, /* invalid rule */\n")
+	for r in rl.rules
+		bio.put(f, "\t{},\n", r.rhs.len)
+	;;
+	bio.put(f, "]\n")
+
+	bio.put(f, "const rulelhs = [\n")
+	bio.put(f, "\t-1, /* invalid rule */\n")
+	for r in rl.rules
+		bio.put(f, "\t{},\n", r.lhs)
+	;;
+	bio.put(f, "]\n")
+
+	bio.put(f, "const parse = {{rest\n")
+	bio.put(f, "\tvar tok, e\n")
+	bio.put(f, "\tvar str\n")
+	bio.put(f, "\tvar stk\n")
+	bio.put(f, "\n")
+	bio.put(f, "\tstk = std.slpush([][:], 1)\n")
+	bio.put(f, "\t(tok, str, rest) = readtok(str)\n")
+	bio.put(f, "\twhile true /* accept */\n")
+	bio.put(f, "\t\tstd.put(\"tok={{}}\\n\", tok)\n")
+	bio.put(f, "\t\te = gram[stk[stk.len-1]][tok]\n")
+	bio.put(f, "\t\tif e == 1<<30\n")
+	bio.put(f, "\t\t\t-> true\n")
+	bio.put(f, "\t\telif e > 0 /* shift */\n")
+	bio.put(f, "\t\t\t(tok, str, rest) = readtok(str)\n")
+	bio.put(f, "\t\t\tstd.put(\"shift tok: {{}}\\n\", str)\n")
+	bio.put(f, "\t\t\tstk = std.slpush(stk, e)\n")
+	bio.put(f, "\t\telif e < 0 /* reduce */\n")
+	bio.put(f, "\t\t\tstd.put(\"reduce {{}}\\n\", -e)\n")
+	bio.put(f, "\t\t\tstk = std.slgrow(stk, stk.len - rulelen[-e])\n")
+	bio.put(f, "\t\t\te = gram[stk[stk.len - 1]][rulelhs[-e]]\n")
+	bio.put(f, "\t\t\tstk = std.slpush(stk, e)\n")
+	bio.put(f, "\t\telse /* error */\n")
+	bio.put(f, "\t\t\tstd.fatal(\"syntax error\\n\")\n")
+	bio.put(f, "\t\t;;\n")
+	bio.put(f, "\t;;\n")
+	bio.put(f, "\t-> false\n")
+	bio.put(f, "}}\n")
 }
+
+const symstr = {rl, sym
+	match std.htget(rl.symname, sym)
+	| `std.Some str:	-> str
+	| `std.None:	std.put("no sym {}\n", sym)
+		-> "???"
+	;;
+}
+
