@@ -161,7 +161,6 @@ const stclosure = {rl, lr, itms
 	var changed
 
 	changed = true
-	dumpstate(rl, itms)
 	while changed
 		changed = false
 		for itm in itms.items

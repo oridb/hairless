@@ -31,9 +31,7 @@ const mknfa = {rl
 			addstr(nfa, t)
 		;;
 	;;
-	/*
 	nfadump(nfa)
-	*/
 	-> nfa
 }
 
@@ -167,7 +165,7 @@ const nfadump = {nfa
 
 	std.put("digraph g = {{\n")
 	for i = 0; i < nfa.edges.len; i++
-		std.put("\t/* st = {} */\n", i)
+		std.put("\t/* st = {}, accept = {} */\n", i, std.hthas(nfa.accept, i))
 		for tr in nfa.edges[i]
 			match tr
 			| `Eps st:

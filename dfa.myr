@@ -164,15 +164,15 @@ has the lowest number.
 We should probably come up with better conflict resolution:
 strings before regex?
 */
-const addaccept = {dfa, nfa, st, d
+const addaccept = {dfa, nfa, st, dstate
 	var oldsym
 
 	match std.htget(nfa.accept, st)
 	| `std.None:	/* nothing */
 	| `std.Some sym:
-		oldsym = std.htgetv(dfa.accept, d, sym)
+		oldsym = std.htgetv(dfa.accept, dstate, sym)
 		if sym <= oldsym
-			std.htput(dfa.accept, d, sym)
+			std.htput(dfa.accept, dstate, sym)
 		;;
 	;;
 }
