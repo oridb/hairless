@@ -85,18 +85,13 @@ const writelr0 = {f, rl, lr
 		tab[src][sym] = dst
 	;;
 
-	for (src, rule) in lr.reduce
-		for i = 0; i < rl.nsym; i++
-			if !std.bshas(rl.isterm, i)
-				continue
-			;;
-			if tab[src][i] > 0
-				std.put("state {}@{}: shift/reduce conflict\n", src, rule)
-			elif tab[src][i] < 0
-				std.put("state {}@{}: reduce/reduce conflict\n", src, rule)
-			else
-				tab[src][i] = -rule castto(int)
-			;;
+	for (src, rule, sym) in lr.reduce
+		if tab[src][sym] > 0
+			std.put("state {}@{}: shift/reduce conflict\n", src, rule)
+		elif tab[src][sym] < 0
+			std.put("state {}@{}: reduce/reduce conflict\n", src, rule)
+		else
+			tab[src][sym] = -rule castto(int)
 		;;
 	;;
 

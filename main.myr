@@ -18,6 +18,7 @@ const main = {args
 		.argdesc="inputs...", 
 		.minargs=1
 	])
+
 	for f in cmd.args
 		/* read the input file */
 		rules = pg.parse(f)
