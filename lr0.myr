@@ -15,7 +15,6 @@ const genlr0tab = {rl
 
 	lr = std.mk([.states=[][:]])
 
-	firstfollow(rl, lr)
 
 	/* dead state */
 	dead = std.mk([
@@ -29,6 +28,8 @@ const genlr0tab = {rl
 		.items = std.sldup([[.rule = augmented(rl), .dot = 0]][:]),
 		.has = std.mkbs()
 	])
+
+	firstfollow(rl, lr)
 	stclosure(rl, lr, i0)
 	addstate(lr, i0);
 
@@ -192,17 +193,17 @@ const stclosure = {rl, lr, itms
 }
 
 const firstfollow = {rl, lr
-	var i, j, idx
+	var i, j, sym
 	var changed
 
 	lr.nullable = std.mkbs()
 	lr.first = std.slalloc(rl.nsym castto(std.size))
 	lr.follow = std.slalloc(rl.nsym castto(std.size))
-
 	for i = 0; i < rl.nsym; i++
 		lr.first[i] = std.mkbs()
 		lr.follow[i] = std.mkbs()
 		if std.bshas(rl.isterm, i)
+			std.put("first {} = {}\n", symstr(rl, i), symstr(rl, i))
 			std.bsput(lr.first[i], i)
 		;;
 	;;
@@ -212,57 +213,40 @@ const firstfollow = {rl, lr
 		changed = false
 		/* build nullable */
 		for rule in rl.rules
+			dumprule(rl, rule)
 			if !std.bshas(lr.nullable, rule.lhs) && isnullable(lr, rule)
 				std.bsput(lr.nullable, rule.lhs)
 				changed = true
 			;;
 			for i = 0; i < rule.rhs.len; i++
-				for j = i; j < rule.rhs.len; j++
-					changed = changed || addfirst(lr, rule, i, j)
-					changed = changed || addfollow(lr, rule, i, j)
+				/* first */
+				if allnullable(lr, rule.rhs[:i])
+					changed = changed || setunion(lr.first[rule.lhs], lr.first[rule.rhs[i]])
+				;;
+
+				/* follow */
+				if allnullable(lr, rule.rhs[i+1:])
+					changed = changed || setunion(lr.follow[rule.rhs[i]], lr.follow[rule.lhs])
+				;;
+				for j = i + 1; j < rule.rhs.len; j++
+					if allnullable(lr, rule.rhs[i:j]) || i + 1 == j
+						changed = changed || setunion(lr.follow[rule.rhs[i]], lr.first[rule.rhs[j]])
+	;;
 				;;
 			;;
 		;;
+		std.put("-------\n")
 	;;
 
 	std.put("Nullable: {}\n", lr.nullable)
 	std.put("first: \n")
-	idx = 0
-	for rule in rl.rules
-		std.put("\t{}: {}\n", idx++, lr.first[rule.lhs])
+	for sym = 0; sym < rl.nsym; sym++
+		std.put("\t[{}] {}:\t{}\n", sym, symstr(rl, sym), lr.first[sym])
 	;;
 	std.put("follow: \n")
-	idx = 0
-	for rule in rl.rules
-		std.put("\t{}: {}\n", idx++, lr.follow[rule.lhs])
+	for sym = 0; sym < rl.nsym; sym++
+		std.put("\t[{}] {}:\t{}\n", sym, symstr(rl, sym), lr.follow[sym])
 	;;
-
-}
-
-const addfirst = {lr, rule, i, j
-	var changed
-
-	changed = false
-	if i == 0 || allnullable(lr, rule.rhs[:i])
-		changed = changed || setunion(lr.first[rule.lhs], lr.first[rule.rhs[i]])
-	;;
-	-> changed
-}
-
-const addfollow = {lr, rule, i, j
-	var changed
-
-	changed = false
-	if i == rule.rhs.len - 1 || allnullable(lr, rule.rhs[i:])
-		changed = changed || setunion(lr.follow[rule.rhs[i]], lr.follow[rule.lhs])
-	;;
-	if i == rule.rhs.len - 1 || allnullable(lr, rule.rhs[i:])
-		changed = changed || setunion(lr.follow[rule.rhs[i]], lr.follow[rule.lhs])
-	;;
-	if allnullable(lr, rule.rhs[i:j])
-		changed = changed || setunion(lr.follow[rule.rhs[i]], lr.first[j])
-	;;
-	-> changed
 }
 
 const setunion = {a, b
@@ -352,13 +336,19 @@ const itemcmp = {a, b
 
 /* creates the initial augmented state. */
 const augmented = {rl
+	var rule
 	std.htput(rl.symname, rl.nsym, "$start")
-	-> std.mk([
+	rule = std.mk([
+		.id = rl.rules.len + 1,
 		.lhs = rl.nsym,
 		.rhs = std.sldup([rl.start, TokEof][:]),
 		.name = ".s0",
-		.act = "ACCEPT"
+		.act = ""
 	])
+	std.htput(rl.symname, rule.lhs, ".s0")
+	rl.rules = std.slpush(rl.rules, rule)
+	rl.nsym++
+	-> rule
 }
 
 const dumpstate = {rl, is
@@ -415,7 +405,6 @@ const dumplalrtab = {rl
 	*/
 }
 
-/*
 const dumprule = {rl, r
 	std.put("{}\t: ", symstr(rl, r.lhs))
 	for t in r.rhs
@@ -423,5 +412,4 @@ const dumprule = {rl, r
 	;;
 	std.put("{{{}}}\n", r.act)
 }
-*/
 
