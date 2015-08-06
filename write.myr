@@ -125,6 +125,8 @@ const writelr0 = {f, rl, lr
 	;;
 	bio.put(f, "]\n")
 
+	actions(f, rl)
+
 	bio.put(f, "const parse = {{rest\n")
 	bio.put(f, "\tvar tok, e, st\n")
 	bio.put(f, "\tvar str\n")
@@ -145,7 +147,7 @@ const writelr0 = {f, rl, lr
 	bio.put(f, "\t\t\tstd.put(\"shift tok: {{}}\\n\", str)\n")
 	bio.put(f, "\t\t\tstk = std.slpush(stk, e)\n")
 	bio.put(f, "\t\telif e < 0 /* reduce */\n")
-	bio.put(f, "\t\t\tstd.put(\"reduce {{}}\\n\", -e)\n")
+	bio.put(f, "\t\t\treduceaction(stk, -e)\n")
 	bio.put(f, "\t\t\tstk = std.slgrow(stk, stk.len - rulelen[-e])\n")
 	bio.put(f, "\t\t\tst = gram[stk[stk.len - 1]][rulelhs[-e]]\n")
 	bio.put(f, "\t\t\tstk = std.slpush(stk, st)\n")
@@ -154,6 +156,24 @@ const writelr0 = {f, rl, lr
 	bio.put(f, "\t\t;;\n")
 	bio.put(f, "\t;;\n")
 	bio.put(f, "\t-> false\n")
+	bio.put(f, "}}\n")
+}
+
+const actions = {f, rl
+	for r in rl.rules
+		if r.act.len > 0
+			bio.put(f, "const act{} = {{{}}}\n", r.id, r.act)
+		else
+			bio.put(f, "const act{} = {{{}}}\n", r.id, "\n")
+		;;
+	;;
+	bio.put(f, "const reduceaction = {{stk, id\n")
+	bio.put(f, "\tmatch id\n")
+	for r in rl.rules
+		bio.put(f, "\t| {}: act{}()\n", r.id, r.id)
+	;;
+	bio.put(f, "\t| _: /* FIXME: blow up appropriately */\n")
+	bio.put(f, "\t;;\n")
 	bio.put(f, "}}\n")
 }
 

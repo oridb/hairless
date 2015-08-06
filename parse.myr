@@ -294,14 +294,26 @@ const myrlit = {p
 	instr = false
 	while !iseof(p)
 		match getc(p)
-		| '\\':	std.sbputc(sb, getc(p))
-		| '"':	instr = !instr
-		| '\'':	inquote = !inquote
+		| '\\':	
+			std.sbputc(sb, '\\')
+			std.sbputc(sb, getc(p))
+		| '"':	
+			std.sbputc(sb, '"')
+			instr = !instr
+		| '\'':	
+			std.sbputc(sb, '\'')
+			inquote = !inquote
 		| '{':
+			if depth > 0
+				std.sbputc(sb, '{')
+			;;
 			if !inquote && !instr
 				depth++
 			;;
 		| '}':
+			if depth > 1
+				std.sbputc(sb, '}')
+			;;
 			if !inquote && !instr
 				depth--
 				if depth == 0
