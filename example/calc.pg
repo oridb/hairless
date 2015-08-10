@@ -1,0 +1,73 @@
+%type int = {int}
+%type str = {byte[:]}
+
+%tok id = /[a-zA-Z_][a-zA-Z0-9_]+/
+%tok num = /[0-9_]+/
+%skip = " "
+
+%start calc
+
+calc
+	: asnexpr
+	| calc asnexpr
+	;
+
+asnexpr
+	: id "=" expr {
+			std.put("{}\n", a2)
+			std.htput(dict, a0, a2)
+		}
+	| expr {
+			std.put("{}\n", a0)
+		}
+		
+	;
+
+expr<int>
+	: term {-> a0}
+	| expr "+" term {-> a0 + a2}
+	| expr "-" term {-> a0 - a2}
+	;
+
+term<int>
+	: atomic	{ -> a0}
+	| term "*" atomic	{ -> a0 * a2}
+	| term "/" atomic	{ -> a0 / a2}
+	| term "%" atomic	{ -> a0 % a2}
+	;
+
+atomic<int>
+	: id {-> std.htgetv(dict, a0, 0)}
+	| num {-> std.get(std.intparse(a0))}
+	| "(" expr ")" {-> a1}
+    	;
+
+%myr {
+use std
+use bio
+
+var dict
+
+const main = {
+	var f
+
+	f = bio.mkfile(0, bio.Rd)
+	dict = std.mkht(std.strhash, std.streq)
+        while true
+		std.put("demo> ")
+		match bio.readln(f)
+		| `std.Some ln:
+			if std.sleq(ln, "quit")
+				break
+			;;
+			if !parse(ln)
+				std.put("Failed to parse input {}\n", ln)
+			;;
+			std.slfree(ln)
+		| `std.None:
+			break
+		;;
+	;;
+}
+}
+
