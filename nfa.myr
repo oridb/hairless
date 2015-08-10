@@ -126,7 +126,11 @@ const re2nfa = {nfa, start, re
 			if r[0] > 0x7f || r[1] > 0x7f
 				std.fatal("unicode ranges not yet supported\n")
 			;;
-			trans(nfa, start, `Range (s, 'a' castto(byte), 'z' castto(byte)))
+			if r[0] < r[1]
+				trans(nfa, start, `Range (s, r[0] castto(byte), r[1] castto(byte)))
+			else
+				trans(nfa, start, `Range (s, r[1] castto(byte), r[0] castto(byte)))
+			;;
 		;;
 		-> s
 	| `regex.Cap (id, r):

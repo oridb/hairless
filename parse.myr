@@ -33,6 +33,8 @@ const parse = {f
 		.stypes = std.mkht(std.inthash, std.inteq)
 	])
 
+	std.htput(rl.types, "_str", "byte[:]")
+
 	/* we always have Eof token */
 	std.bsput(p.isterm, symid(p, "Eof"))
 	while !iseof(p)
@@ -177,6 +179,7 @@ const addtok = {p, rl, name, isregex, pat, skip
 	])
 
 	std.bsput(p.isterm, tok.sym)
+	std.htput(rl.stypes, tok.sym, "_str")
 	rl.toks = std.slpush(rl.toks, tok)
 }
 
