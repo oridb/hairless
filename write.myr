@@ -12,7 +12,6 @@ pkg pg =
 const writehdr = {f, rules
 	var tags, ty
 
-	bio.put(f, "use std\n")
 	for u in rules.uses
 		bio.put(f, "use {}\n", u)
 	;;
@@ -20,16 +19,16 @@ const writehdr = {f, rules
 	bio.put(f, "\tconst parse	: (str : byte[:] -> bool)\n")
 	bio.put(f, ";;\n")
 
+	bio.write(f, rules.myr)
+
 	tags = std.htkeys(rules.types)
 	bio.put(f, "type _symval = union\n")
 	bio.put(f, "\t`Sym__void\n")
-	bio.put(f, "\t`Sym__str byte[:]\n")
 	for t in tags
 		ty = std.htgetv(rules.types, t, "")
 		bio.put(f, "\t`Sym_{} {}\n", t, ty)
 	;;
 	bio.put(f, ";;\n\n")
-
 	for t in tags
 		ty = std.htgetv(rules.types, t, "")
 		bio.put(f, "const extract_{} = {{val : _symval -> {}\n", t, ty)
@@ -64,7 +63,7 @@ const writedfa = {f, rl, dfa
 	bio.put(f, "\t\tmatch (state, str[off])\n")
 	for trans in dfa.trans
 		for (chr, next) in trans
-			bio.put(f, "\t\t| ({}, {}):\n", st, chr)
+			bio.put(f, "\t\t| ({}, {}): /* {} */\n", st, chr, chr castto(char))
 			bio.put(f, "\t\t\tstate = {}\n", next)
 			match std.htget(dfa.accept, next)
 			| `std.Some tok:
@@ -171,7 +170,6 @@ const writelr0 = {f, rl, lr
 	bio.put(f, "\t\tif e == 1<<30\n")
 	bio.put(f, "\t\t\t-> true\n")
 	bio.put(f, "\t\telif e > 0 /* shift */\n")
-	bio.put(f, "\t\t\tstd.put(\"shift tok: {{}}\\n\", str)\n")
 	bio.put(f, "\t\t\tstk = std.slpush(stk, e)\n")
 	bio.put(f, "\t\t\tvals = std.slpush(vals, `Sym__str str)\n")
 	bio.put(f, "\t\t\t(tok, str, rest) = readtok(rest)\n")
@@ -232,8 +230,8 @@ const actargs = {f, rl, r
 			| `std.None:
 				std.fatal("rule '{}': unknown type '{}'\n", r.id, tyname)
 			;;
+			sep = ", "
 		;;
-		sep = ", "
 	;;
 	match std.htget(rl.stypes, r.lhs)
 	| `std.None:	/* nothing */
