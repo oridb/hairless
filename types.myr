@@ -15,7 +15,8 @@ pkg pg =
 		nsym	: sym
 		isterm	: std.bitset#
 		symname : std.htab(sym, byte[:])#
-		
+		types	: std.htab(byte[:], byte[:])#
+		stypes	: std.htab(sym, byte[:])#
 	;;
 
 	type dfa = struct

@@ -10,6 +10,8 @@ pkg pg =
 ;;
 
 const writehdr = {f, rules
+	var tags, ty
+
 	bio.put(f, "use std\n")
 	for u in rules.uses
 		bio.put(f, "use {}\n", u)
@@ -18,6 +20,26 @@ const writehdr = {f, rules
 	bio.put(f, "\tconst parse	: (str : byte[:] -> bool)\n")
 	bio.put(f, ";;\n")
 
+	tags = std.htkeys(rules.types)
+	bio.put(f, "type _symval = union\n")
+	bio.put(f, "\t`Sym__void\n")
+	bio.put(f, "\t`Sym__str byte[:]\n")
+	for t in tags
+		ty = std.htgetv(rules.types, t, "")
+		bio.put(f, "\t`Sym_{} {}\n", t, ty)
+	;;
+	bio.put(f, ";;\n\n")
+
+	for t in tags
+		ty = std.htgetv(rules.types, t, "")
+		bio.put(f, "const extract_{} = {{val : _symval -> {}\n", t, ty)
+		bio.put(f, "\tmatch val\n")
+		bio.put(f, "\t| `Sym_{} sv: -> sv\n", t)
+		bio.put(f, "\t| _: std.die(\"invalid extraction\\n\")\n")
+		bio.put(f, "\t;;\n")
+		bio.put(f, "}}\n\n")
+	;;
+	std.slfree(tags)
 }
 
 const writedfa = {f, rl, dfa
@@ -131,10 +153,12 @@ const writelr0 = {f, rl, lr
 
 	actions(f, rl)
 
+	bio.put(f, "var stk	: int[:]\n")
+	bio.put(f, "var vals	: _symval[:]\n")
+	bio.put(f, "\n")
 	bio.put(f, "const parse = {{rest\n")
 	bio.put(f, "\tvar tok, e, st\n")
-	bio.put(f, "\tvar str\n")
-	bio.put(f, "\tvar stk\n")
+	bio.put(f, "\tvar str, val\n")
 	bio.put(f, "\n")
 	bio.put(f, "\tstk = std.slpush([][:], 1)\n")
 	bio.put(f, "\t(tok, str, rest) = readtok(rest)\n")
@@ -148,13 +172,16 @@ const writelr0 = {f, rl, lr
 	bio.put(f, "\t\t\t-> true\n")
 	bio.put(f, "\t\telif e > 0 /* shift */\n")
 	bio.put(f, "\t\t\tstd.put(\"shift tok: {{}}\\n\", str)\n")
-	bio.put(f, "\t\t\t(tok, str, rest) = readtok(rest)\n")
 	bio.put(f, "\t\t\tstk = std.slpush(stk, e)\n")
+	bio.put(f, "\t\t\tvals = std.slpush(vals, `Sym__str str)\n")
+	bio.put(f, "\t\t\t(tok, str, rest) = readtok(rest)\n")
 	bio.put(f, "\t\telif e < 0 /* reduce */\n")
-	bio.put(f, "\t\t\treduceaction(stk, -e)\n")
+	bio.put(f, "\t\t\tval = reduceaction(stk, -e)\n")
 	bio.put(f, "\t\t\tstk = std.slgrow(stk, stk.len - rulelen[-e])\n")
+	bio.put(f, "\t\t\tvals = std.slgrow(vals, vals.len - rulelen[-e])\n")
 	bio.put(f, "\t\t\tst = gram[stk[stk.len - 1]][rulelhs[-e]]\n")
 	bio.put(f, "\t\t\tstk = std.slpush(stk, st)\n")
+	bio.put(f, "\t\t\tvals = std.slpush(vals, val)\n")
 	bio.put(f, "\t\telse /* error */\n")
 	bio.put(f, "\t\t\tstd.fatal(\"syntax error\\n\")\n")
 	bio.put(f, "\t\t;;\n")
@@ -165,20 +192,76 @@ const writelr0 = {f, rl, lr
 
 const actions = {f, rl
 	for r in rl.rules
-		if r.act.len > 0
-			bio.put(f, "const act{} = {{{}}}\n", r.id, r.act)
-		else
-			bio.put(f, "const act{} = {{{}}}\n", r.id, "\n")
-		;;
+		bio.put(f, "const act{} = {{", r.id)
+		actargs(f, rl, r)
+		bio.put(f, "{}}}\n", r.act)
 	;;
 	bio.put(f, "const reduceaction = {{stk, id\n")
 	bio.put(f, "\tmatch id\n")
 	for r in rl.rules
-		bio.put(f, "\t| {}: act{}()\n", r.id, r.id)
+		bio.put(f, "\t| {}:\n", r.id)
+		match std.htget(rl.stypes, r.lhs)
+		| `std.Some tag:
+			bio.put(f, "\t\t-> `Sym_{} act{}(", tag, r.id)
+			extractargs(f, rl, r)
+			bio.put(f, ")\n")
+		| `std.None:
+			bio.put(f, "\t\tact{}(", r.id)
+			extractargs(f, rl, r)
+			bio.put(f, ")\n")
+			bio.put(f, "\t\t-> `Sym__void\n")
+		;;
 	;;
-	bio.put(f, "\t| _: /* FIXME: blow up appropriately */\n")
+	bio.put(f, "\t| _: std.die(\"bad action\\n\")\n")
 	bio.put(f, "\t;;\n")
 	bio.put(f, "}}\n")
+}
+
+const actargs = {f, rl, r
+	var i
+	var sep
+
+	sep = ""
+	for i = 0; i < r.rhs.len; i++
+		match std.htget(rl.stypes, r.rhs[i])
+		| `std.None:	/* nothing */
+		| `std.Some tyname:
+			match std.htget(rl.types, tyname)
+			| `std.Some myrtype:
+				bio.put(f, "{}a{} : {}", sep, i, myrtype)
+			| `std.None:
+				std.fatal("rule '{}': unknown type '{}'\n", r.id, tyname)
+			;;
+		;;
+		sep = ", "
+	;;
+	match std.htget(rl.stypes, r.lhs)
+	| `std.None:	/* nothing */
+		bio.put(f, "-> void")
+	| `std.Some tyname:
+		match std.htget(rl.types, tyname)
+		| `std.Some myrtype:
+			bio.put(f, "-> {}", myrtype)
+		| `std.None:
+			std.fatal("rule '{}': unknown type '{}'\n", r.id, tyname)
+		;;
+	;;
+	bio.put(f, "\n")
+}
+
+const extractargs = {f, rl, rule
+	var i
+	var sep
+
+	sep = ""
+	for i = 0; i < rule.rhs.len; i++
+		match std.htget(rl.stypes, rule.rhs[i])
+		| `std.None:	/* nothing */
+		| `std.Some t:
+			bio.put(f, "{}extract_{}(vals[vals.len - {}])", sep, t, rule.rhs.len - i)
+		;;
+		sep = ", "
+	;;
 }
 
 const symstr = {rl, sym

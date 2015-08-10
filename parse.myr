@@ -29,6 +29,8 @@ const parse = {f
 		.infile = f,
 		.isterm = p.isterm,
 		.symname = p.symname,
+		.types = std.mkht(std.strhash, std.streq),
+		.stypes = std.mkht(std.inthash, std.inteq)
 	])
 
 	/* we always have Eof token */
@@ -109,6 +111,8 @@ const directive = {p, rl
 		token(p, rl, false)
 	| `std.Some "skip":
 		token(p, rl, true)
+	| `std.Some "type":
+		rtype(p, rl)
 	| `std.Some d:
 		failparse(p, "unknown directive {}\n", d)
 	| `std.None:
@@ -116,11 +120,32 @@ const directive = {p, rl
 	;;
 }
 
+const rtype = {p, rl
+	var name, ty
+
+	name = expect(p, word(p), "expected token name after '%type'\n")
+	skipspace(p)
+	if !matchc(p, '=')
+		failparse(p, "expected '=' after type name\n")
+	;;
+	ty = expect(p, myrlit(p), "expected myrddin literal after %type\n")
+	addtype(rl, name, ty)
+}
+
+const addtype = {rl, name, ty
+	std.htput(rl.types, name, ty)
+}
+
 const token = {p, rl, skip
-	var name, pat, tok : tok#
+	var name, pat
 	var isregex
 
-	name = expect(p, word(p), "expected token name after '%tok'\n")
+	name = ""
+	if skip
+		name = std.fmt(".itok{}", rl.toks.len)
+	else
+		name = expect(p, word(p), "expected token name after '%tok'\n")
+	;;
 	skipspace(p)
 	if !matchc(p, '=')
 		failparse(p, "expected '=' after token name\n")
@@ -137,6 +162,12 @@ const token = {p, rl, skip
 	| c:
 		failparse(p, "invalid token pattern starting with '{}'\n", c)
 	;;
+	addtok(p, rl, name, isregex, pat, skip)
+}
+
+const addtok = {p, rl, name, isregex, pat, skip
+	var tok : tok#
+
 	tok = std.mk([
 		.sym = symid(p, name),
 		.isregex = isregex,
@@ -144,24 +175,42 @@ const token = {p, rl, skip
 		.pat = pat,
 		.skip = skip,
 	])
+
 	std.bsput(p.isterm, tok.sym)
 	rl.toks = std.slpush(rl.toks, tok)
 }
 
 const rule = {p, rl
+	var rtype
+	var sym
 	var r
 
 	match word(p)
 	| `std.None:
 		/* nothing */
 	| `std.Some name:
+		rtype = ""
+		skipspace(p)
+		if matchc(p, '<')
+			rtype = expect(p, word(p), "expected type in <>\n")
+			skipspace(p)
+			if !matchc(p, '>')
+				failparse(p, "expected > after type\n")
+			;;
+		;;
+
 		skipspace(p)
 		if !matchc(p, ':')
 			failparse(p, "expected ':' after rule name\n")
 		;;
 		while true
-			r = rulebody(p, symid(p, name))
+			sym = symid(p, name)
+			r = rulebody(p, rl, sym)
 			addrule(p, rl, r, name)
+			if rtype.len > 0
+				std.htput(rl.stypes, sym, rtype)
+			;;
+
 			skipspace(p)
 			if matchc(p, ';')
 				break
@@ -173,15 +222,24 @@ const rule = {p, rl
 	;;
 }
 
-const rulebody = {p, lhs -> rule#
+const rulebody = {p, rl, lhs -> rule#
 	var rhs
 	var action
+	var pat
 
 	rhs = [][:]
 	while true
-		match word(p)
-		| `std.Some w:	rhs = std.slpush(rhs, symid(p, w))
-		| `std.None:	break
+		skipspace(p)
+		/* implicit tokens can show up here */
+		if peekc(p) == '"'
+			pat = expect(p, quoted(p, '"'), "expected token regex\n")
+			addtok(p, rl, pat, false, pat, false)
+			rhs = std.slpush(rhs, symid(p, pat))
+		else
+			match word(p)
+			| `std.Some w:	rhs = std.slpush(rhs, symid(p, w))
+			| `std.None:	break
+			;;
 		;;
 	;;
 	skipspace(p)
@@ -311,15 +369,13 @@ const myrlit = {p
 				depth++
 			;;
 		| '}':
-			if depth > 1
-				std.sbputc(sb, '}')
-			;;
 			if !inquote && !instr
 				depth--
 				if depth == 0
 					goto foundmyr
 				;;
 			;;
+			std.sbputc(sb, '}')
 		| c:
 			std.sbputc(sb, c)
 		;;
@@ -341,11 +397,8 @@ const skipspace = {p
 		| '\n':
 			getc(p)
 			p.line++
-		| '/':
-			if !matchc(p, '*')
-				break
-			;;
-			while p.rest.len > 0 && peekc(p) != '*'
+		| '#':
+			while p.rest.len > 0 && peekc(p) != '\n'
 				getc(p)
 			;;
 		| _:
