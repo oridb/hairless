@@ -1,4 +1,4 @@
-bin mpgen =
+bin hairless =
 	dfa.myr
 	nfa.myr
 	lr0.myr
