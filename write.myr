@@ -10,14 +10,23 @@ pkg pg =
 ;;
 
 const writehdr = {f, rules
-	var tags, ty
+	var tags, ty, ret
 
 	for u in rules.uses
 		bio.put(f, "use {}\n", u)
 	;;
+
+	match std.htget(rules.stypes, rules.start)
+	| `std.None:
+		ret = std.fmt("bool")
+	| `std.Some tyname:
+		ret = std.fmt("std.option({})", std.get(std.htget(rules.types, tyname)))
+	;;
+
 	bio.put(f, "pkg {} =\n", rules.pkgname)
-	bio.put(f, "\tconst parse	: (str : byte[:] -> bool)\n")
+	bio.put(f, "\tconst parse	: (str : byte[:] -> {})\n", ret)
 	bio.put(f, ";;\n")
+	std.slfree(ret)
 
 	bio.write(f, rules.myr)
 
@@ -98,11 +107,11 @@ const writedfa = {f, rl, dfa
 
 const writelr0 = {f, rl, lr
 	var tab
-	var s
-	var i
+	var s, i
+	var okret, failret
 
 	tab = std.slzalloc(lr.states.len)
-	for i = 0; i < tab.len; i++
+	for var i = 0; i < tab.len; i++
 		tab[i] = std.slzalloc(rl.nsym castto(std.size))
 	;;
 
@@ -126,7 +135,8 @@ const writelr0 = {f, rl, lr
 		bio.put(f, "{}\t", symstr(rl, s))
 	;;
 	bio.put(f, "*/\n")
-	i = 0;
+
+	i = 0
 	for row in tab
 		bio.put(f, "/*{}*/\t[", i++)
 		for col in row
@@ -152,6 +162,15 @@ const writelr0 = {f, rl, lr
 
 	actions(f, rl)
 
+	match std.htget(rl.stypes, rl.start)
+	| `std.Some tag:
+		okret = std.fmt("`std.Some extract_{}(vals[vals.len - 1])", tag)
+		failret = std.fmt("`std.None")
+	| `std.None:
+		okret = std.fmt("true")
+		failret = std.fmt("false")
+	;;
+
 	bio.put(f, "var stk	: int[:]\n")
 	bio.put(f, "var vals	: _symval[:]\n")
 	bio.put(f, "\n")
@@ -168,7 +187,7 @@ const writelr0 = {f, rl, lr
 	bio.put(f, "\n")
 	bio.put(f, "\t\te = gram[stk[stk.len-1]][tok]\n")
 	bio.put(f, "\t\tif e == 1<<30\n")
-	bio.put(f, "\t\t\t-> true\n")
+	bio.put(f, "\t\t\t-> {}\n", okret)
 	bio.put(f, "\t\telif e > 0 /* shift */\n")
 	bio.put(f, "\t\t\tstk = std.slpush(stk, e)\n")
 	bio.put(f, "\t\t\tvals = std.slpush(vals, `Sym__str str)\n")
@@ -184,7 +203,7 @@ const writelr0 = {f, rl, lr
 	bio.put(f, "\t\t\tstd.fatal(\"syntax error\\n\")\n")
 	bio.put(f, "\t\t;;\n")
 	bio.put(f, "\t;;\n")
-	bio.put(f, "\t-> false\n")
+	bio.put(f, "\t-> {}\n", failret)
 	bio.put(f, "}}\n")
 }
 
@@ -228,7 +247,7 @@ const actargs = {f, rl, r
 			| `std.Some myrtype:
 				bio.put(f, "{}a{} : {}", sep, i, myrtype)
 			| `std.None:
-				std.fatal("rule '{}': unknown type '{}'\n", r.id, tyname)
+				std.fatal("rule '{}': unknown type '{}'\n", symstr(rl, r.lhs) , tyname)
 			;;
 			sep = ", "
 		;;

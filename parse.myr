@@ -287,7 +287,7 @@ const usename = {p
 
 const quoted = {p, quot
 	var start
-	var n
+	var n, chr
 
 	n = 0
 	skipspace(p)
@@ -296,16 +296,17 @@ const quoted = {p, quot
 	;;
 	start = p.rest
 	while p.rest.len > 0
-		match getc(p)
+		chr = getc(p)
+		match chr
 		| '\n':	break
-		| '\\':	n += std.charlen(getc(p))
+		| '\\':
+			n += std.charlen(getc(p))
 		| c:
 			if c == quot
 				goto foundquote
-			else
-				n += std.charlen(c)
 			;;
 		;;
+		n += std.charlen(chr)
 	;;
 	failparse(p, "missing closing quote in string")
 :foundquote
