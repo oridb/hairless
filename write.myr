@@ -233,6 +233,7 @@ const actargs = {f, rl, r
 			sep = ", "
 		;;
 	;;
+
 	match std.htget(rl.stypes, r.lhs)
 	| `std.None:	/* nothing */
 		bio.put(f, "-> void")

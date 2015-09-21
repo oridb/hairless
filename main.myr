@@ -16,8 +16,16 @@ const main = {args
 
 	cmd = std.optparse(args, &[
 		.argdesc="inputs...", 
-		.minargs=1
+		.minargs=1,
+		.opts = [[.opt='d', .desc="turn on debugging"]][:]
 	])
+
+	for o in cmd.opts
+		match o
+		| ('d', ""):	pg.opt_dbg = true
+		| _:	std.fatal("unreachable")
+		;;
+	;;
 
 	for f in cmd.args
 		/* read the input file */
@@ -30,7 +38,6 @@ const main = {args
 
 		/* and output */
 		path = swapsuffix(f, ".mpg", ".myr")
-		std.put("writing to {}\n", path)
 		out = std.try(bio.create(path, bio.Wr, 0o666))
 		pg.writehdr(out, rules)
 		pg.writedfa(out, rules, dfa)
@@ -42,12 +49,8 @@ const main = {args
 
 const swapsuffix = {str, suff, repl
 	if std.hassuffix(str, suff)
-		std.put("str = {}, str[:str.len - suff.len] = {}, repl = {}\n", \
-			str, str[:str.len - suff.len], repl)
 		-> std.strcat(str[:str.len - suff.len], repl)
 	else
-		std.put("str = {}, repl = {}\n", \
-			str, repl)
 		-> std.strcat(str, repl)
 	;;
 }

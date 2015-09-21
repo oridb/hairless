@@ -37,14 +37,16 @@ const genlr0tab = {rl
 	addshift(rl, lr)
 	addreduce(rl, lr)
 
-	dumplalrtab(rl)
-	for i = 0; i < lr.states.len; i++
-		std.put("i{}\n", i)
-		dumpstate(rl, lr.states[i])
-	;;
+	if opt_dbg
+		dumplalrtab(rl)
+		for i = 0; i < lr.states.len; i++
+			std.put("i{}\n", i)
+			dumpstate(rl, lr.states[i])
+		;;
 
-	for (f, t, s) in lr.shift
-		std.put("i{} =={}==> i{}\n", f, symstr(rl, s), t)
+		for (f, t, s) in lr.shift
+			std.put("i{} =={}==> i{}\n", f, symstr(rl, s), t)
+		;;
 	;;
 	-> lr
 }
@@ -203,7 +205,6 @@ const firstfollow = {rl, lr
 		lr.first[i] = std.mkbs()
 		lr.follow[i] = std.mkbs()
 		if std.bshas(rl.isterm, i)
-			std.put("first {} = {}\n", symstr(rl, i), symstr(rl, i))
 			std.bsput(lr.first[i], i)
 		;;
 	;;
@@ -213,7 +214,6 @@ const firstfollow = {rl, lr
 		changed = false
 		/* build nullable */
 		for rule in rl.rules
-			dumprule(rl, rule)
 			if !std.bshas(lr.nullable, rule.lhs) && isnullable(lr, rule)
 				std.bsput(lr.nullable, rule.lhs)
 				changed = true
@@ -235,17 +235,18 @@ const firstfollow = {rl, lr
 				;;
 			;;
 		;;
-		std.put("-------\n")
 	;;
 
-	std.put("Nullable: {}\n", lr.nullable)
-	std.put("first: \n")
-	for sym = 0; sym < rl.nsym; sym++
-		std.put("\t[{}] {}:\t{}\n", sym, symstr(rl, sym), lr.first[sym])
-	;;
-	std.put("follow: \n")
-	for sym = 0; sym < rl.nsym; sym++
-		std.put("\t[{}] {}:\t{}\n", sym, symstr(rl, sym), lr.follow[sym])
+	if opt_dbg
+		std.put("Nullable: {}\n", lr.nullable)
+		std.put("first: \n")
+		for sym = 0; sym < rl.nsym; sym++
+			std.put("\t[{}] {}:\t{}\n", sym, symstr(rl, sym), lr.first[sym])
+		;;
+		std.put("follow: \n")
+		for sym = 0; sym < rl.nsym; sym++
+			std.put("\t[{}] {}:\t{}\n", sym, symstr(rl, sym), lr.follow[sym])
+		;;
 	;;
 }
 
@@ -386,7 +387,6 @@ const symstr = {rl, sym
 }
 
 const dumplalrtab = {rl
-	/*
 	std.put("infile:\t{}\n", rl.infile)
 	std.put("pkg:\t{}\n", rl.pkgname)
 	std.put("start:\t{}\n", rl.start)
@@ -400,9 +400,8 @@ const dumplalrtab = {rl
 		std.put("tok {} : {}\n", t.name, t.pat)
 	;;
 	for r in rl.rules
-		dumprule(r)
+		dumprule(rl, r)
 	;;
-	*/
 }
 
 const dumprule = {rl, r

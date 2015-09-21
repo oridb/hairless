@@ -31,7 +31,10 @@ const mknfa = {rl
 			addstr(nfa, t)
 		;;
 	;;
-	nfadump(nfa)
+
+	if opt_dbg
+		nfadump(nfa)
+	;;
 	-> nfa
 }
 

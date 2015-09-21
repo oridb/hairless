@@ -6,7 +6,6 @@ use "nfa.use"
 
 pkg pg =
 	const mkdfa	: (nfa : nfa# -> dfa#)
-	const dumpdfa	: (dfa : dfa# -> void)
 ;;
 
 
@@ -80,9 +79,9 @@ const mkdfa = {nfa
 		j++
 	;;
 	
-	/*
-	dumpdfa(dfa)
-	*/
+	if opt_dbg
+		dfadump(dfa)
+	;;
 	-> dfa
 }
 
@@ -186,7 +185,7 @@ const seteq = {a, b
 	-> std.sleq(a.bits, b.bits)
 }
 
-const dumpdfa = {dfa
+const dfadump = {dfa
 	var st
 
 	st = 0

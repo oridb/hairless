@@ -79,5 +79,8 @@ pkg pg =
 	;;
 
 	const TokEof	: sym = 0
+
+	var opt_dbg
 ;;
 
+var opt_dbg = false
