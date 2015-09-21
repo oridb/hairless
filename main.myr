@@ -37,7 +37,7 @@ const main = {args
 		tab = pg.genlr0tab(rules)
 
 		/* and output */
-		path = swapsuffix(f, ".mpg", ".myr")
+		path = swapsuffix(f, ".hl", ".myr")
 		out = std.try(bio.create(path, bio.Wr, 0o666))
 		pg.writehdr(out, rules)
 		pg.writedfa(out, rules, dfa)
