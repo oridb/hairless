@@ -1,15 +1,15 @@
-.TH HAIRLESSS 1
+.TH MPGEN 1
 .SH NAME
-hairless
+mpgen
 .SH SYNOPSIS
-.B hairless
+.B mpgen
 .I [-h]
 .I [-o outfile]
 .I [file...]
 .br
 .SH DESCRIPTION
 .PP
-The 'hairless' tool takes as input a list of hairless sources, and compiles them
+The 'mpgen' tool takes as input a list of mpgen sources, and compiles them
 into myrddin source files that implement the parser generators described
 within those input files.
 
@@ -18,10 +18,10 @@ Mpgen will, by default, output files in the form BASENAME.pg to files
 in the form BASENAME.myr.
 
 .PP
-Mbld knows about hairless, and hairless files will be compiled correctly when included in bld.proj.
+Mbld knows about mpgen, and mpgen files will be compiled correctly when included in bld.proj.
 
 .PP
-The hairless options are:
+The mpgen options are:
 
 .TP
 .B -h, -?
@@ -34,17 +34,17 @@ Output into file `outfile` instead of
 
 .SH EXAMPLE
 .EX
-    hairless input.pg
-    hairless -o output-file-name input.pg
+    mpgen input.pg
+    mpgen -o output-file-name input.pg
 .EE
 
 .SH FILES
-The source for hairless is available from
-.B git://git.eigenstate.org/git/ori/hairless.git
+The source for mpgen is available from
+.B git://git.eigenstate.org/git/ori/mpgen.git
 
 .SH SEE ALSO
 .IR mc(1)
-.IR hairless(1)
+.IR mpgen(1)
 .IR ld(1)
 .IR as(1)
 
