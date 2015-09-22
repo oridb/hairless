@@ -1,5 +1,6 @@
 %type int = {int}
 %type str = {byte[:]}
+%func run
 
 %tok id = /[a-zA-Z_][a-zA-Z0-9_]+/
 %tok num = /[0-9_]+/
@@ -60,7 +61,7 @@ const main = {
 			if std.sleq(ln, "quit")
 				break
 			;;
-			if !parse(ln)
+			if !run(ln)
 				std.put("Failed to parse input {}\n", ln)
 			;;
 			std.slfree(ln)

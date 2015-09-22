@@ -45,6 +45,9 @@ const parse = {f
 	if rl.start == TokEof
 		std.fatal("missing %start <start symbol>\n")
 	;;
+	if rl.func.len == 0
+		rl.func = "parse"
+	;;
 	-> rl
 }
 
@@ -101,8 +104,8 @@ const directive = {p, rl
 		s = expect(p, word(p), "expected start symbol name after 'start'\n")
 		rl.start = symid(p, s)
 	| `std.Some "pkg":
-		checkunset(p, rl.pkgname, "'pkg' already sepecified\n")
-		rl.pkgname = expect(p, word(p), "expected package name after 'pkg'\n")
+		checkunset(p, rl.package, "'pkg' already sepecified\n")
+		rl.package = expect(p, word(p), "expected package name after 'pkg'\n")
 	| `std.Some "use":
 		u = expect(p, usename(p), "expected use name after 'pkg'\n")
 		rl.uses = std.slpush(rl.uses, u)
@@ -115,6 +118,9 @@ const directive = {p, rl
 		token(p, rl, true)
 	| `std.Some "type":
 		rtype(p, rl)
+	| `std.Some "func":
+		checkunset(p, rl.func, "already set %func")
+		rl.func = expect(p, word(p), "expected function name after %func")
 	| `std.Some d:
 		failparse(p, "unknown directive {}\n", d)
 	| `std.None:

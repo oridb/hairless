@@ -6,7 +6,7 @@ use "types.use"
 pkg pg =
 	const writehdr	: (f : bio.file#, rules : rules# -> void)
 	const writedfa	: (f : bio.file#, rules : rules#, dfa : dfa# -> void)
-	const writelr0	: (f : bio.file#, rules : rules#, lr : lalr# -> void)
+	const writelalr	: (f : bio.file#, rules : rules#, lr : lalr# -> void)
 ;;
 
 const writehdr = {f, rules
@@ -23,8 +23,8 @@ const writehdr = {f, rules
 		ret = std.fmt("std.option({})", std.get(std.htget(rules.types, tyname)))
 	;;
 
-	bio.put(f, "pkg {} =\n", rules.pkgname)
-	bio.put(f, "\tconst parse	: (str : byte[:] -> {})\n", ret)
+	bio.put(f, "pkg {} =\n", rules.package)
+	bio.put(f, "\tconst {}	: (str : byte[:] -> {})\n", rules.func, ret)
 	bio.put(f, ";;\n")
 	std.slfree(ret)
 
@@ -105,7 +105,7 @@ const writedfa = {f, rl, dfa
 	bio.put(f, "\n")
 }
 
-const writelr0 = {f, rl, lr
+const writelalr = {f, rl, lr
 	var tab
 	var s, i
 	var okret, failret
@@ -174,7 +174,7 @@ const writelr0 = {f, rl, lr
 	bio.put(f, "var stk	: int[:]\n")
 	bio.put(f, "var vals	: _symval[:]\n")
 	bio.put(f, "\n")
-	bio.put(f, "const parse = {{rest\n")
+	bio.put(f, "const {} = {{rest\n", rl.func)
 	bio.put(f, "\tvar tok, e, st\n")
 	bio.put(f, "\tvar str, val\n")
 	bio.put(f, "\n")

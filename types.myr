@@ -6,7 +6,8 @@ pkg pg =
 	type rules = struct
 		infile	: byte[:]
 		start	: sym
-		pkgname	: byte[:]	/* the package name to output */
+		package	: byte[:]	/* the package name to output */
+		func	: byte[:]
 		uses	: byte[:][:]
 		myr	: byte[:]
 		rules	: rule#[:]
@@ -59,6 +60,7 @@ pkg pg =
 	type item = struct
 		rule	: rule#
 		dot	: int
+		peek	: sym
 	;;
 
 

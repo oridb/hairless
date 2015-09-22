@@ -3,12 +3,12 @@ use std
 use "types.use"
 
 pkg pg =
-	const genlr0tab : (rl : rules# -> lalr#)
-	const dumplr0tab : (rl : rules# -> void)
+	const genlalrtab : (rl : rules# -> lalr#)
+	const dumplalrtab : (rl : rules# -> void)
 ;;
 
 /* Creates a LR(0) table from a set of rules and terminals. */
-const genlr0tab = {rl
+const genlalrtab = {rl
 	var dead, i0 : state#
 	var lr
 	var i
@@ -388,7 +388,7 @@ const symstr = {rl, sym
 
 const dumplalrtab = {rl
 	std.put("infile:\t{}\n", rl.infile)
-	std.put("pkg:\t{}\n", rl.pkgname)
+	std.put("pkg:\t{}\n", rl.package)
 	std.put("start:\t{}\n", rl.start)
 	std.put("use:\t")
 	for u in rl.uses
