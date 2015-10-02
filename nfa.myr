@@ -69,7 +69,7 @@ const addre = {nfa, pat
 			std.bsput(nfa.skip, pat.sym)
 		;;
 	| `std.Fail m:
-		std.fatal("invalid regex {}: {}\n", pat.pat, regex.failmsg(m))
+		std.fatal("invalid regex {}: {}\n", pat.pat, m)
 	;;
 }
 
