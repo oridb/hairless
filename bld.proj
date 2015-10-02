@@ -8,4 +8,7 @@ bin hairless =
 	write.myr
 ;;
 
-sub = doc ;;
+sub =
+	doc
+	example
+;;

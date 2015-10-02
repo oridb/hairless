@@ -8,18 +8,18 @@
 
 %start calc
 
-calc
-	: asnexpr
-	| calc asnexpr
+calc<int>
+	: asnexpr {-> a0}
+	| calc asnexpr {-> a0}
 	;
 
-asnexpr
+asnexpr<int>
 	: id "=" expr {
-			std.put("{}\n", a2)
 			std.htput(dict, a0, a2)
+                        -> a2
 		}
 	| expr {
-			std.put("{}\n", a0)
+                        -> a0
 		}
 		
 	;
@@ -61,8 +61,9 @@ const main = {
 			if std.sleq(ln, "quit")
 				break
 			;;
-			if !run(ln)
-				std.put("Failed to parse input {}\n", ln)
+                        match run(ln)
+                        | `std.Some r:  std.put("{}\n", r)
+                        | `std.None:    std.put("Failed to parse input {}\n", ln)
 			;;
 			std.slfree(ln)
 		| `std.None:
