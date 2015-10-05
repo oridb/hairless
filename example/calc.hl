@@ -57,7 +57,7 @@ const main = {
         while true
 		std.put("demo> ")
 		match bio.readln(f)
-		| `std.Some ln:
+		| `bio.Ok ln:
 			if std.sleq(ln, "quit")
 				break
 			;;
@@ -66,8 +66,8 @@ const main = {
                         | `std.None:    std.put("Failed to parse input {}\n", ln)
 			;;
 			std.slfree(ln)
-		| `std.None:
-			break
+		| `bio.Err e:   std.put("error reading line: {}\n", e)
+                | `bio.Eof:
 		;;
 	;;
 }
