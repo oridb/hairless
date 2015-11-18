@@ -1,4 +1,4 @@
-bin calc =
+bin calc {tag=demo} =
 	calc.myr
 ;;
 
