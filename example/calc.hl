@@ -67,7 +67,7 @@ const main = {
 			;;
 			std.slfree(ln)
 		| `bio.Err e:   std.put("error reading line: {}\n", e)
-                | `bio.Eof:
+                | `bio.Eof:     break
 		;;
 	;;
 }
