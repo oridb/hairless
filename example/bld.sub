@@ -2,4 +2,4 @@ bin calc {tag=demo} =
 	calc.myr
 ;;
 
-gen calc.myr = ../hairless calc.hl ;;
+gen calc.myr {tag=demo} = ../hairless calc.hl ;;
