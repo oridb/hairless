@@ -148,11 +148,11 @@ const re2nfa = {nfa, start, re
 }
 
 const trans = {nfa, st, tr
-	nfa.edges[st] = std.slpush(nfa.edges[st], tr)
+	std.slpush(&nfa.edges[st], tr)
 }
 
 const addstate = {nfa
-	nfa.edges = std.slpush(nfa.edges, [][:])
+	std.slpush(&nfa.edges, [][:])
 	-> nfa.edges.len - 1
 }
 

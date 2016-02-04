@@ -108,7 +108,7 @@ const directive = {p, rl
 		rl.package = expect(p, word(p), "expected package name after 'pkg'\n")
 	| `std.Some "use":
 		u = expect(p, usename(p), "expected use name after 'pkg'\n")
-		rl.uses = std.slpush(rl.uses, u)
+		std.slpush(&rl.uses, u)
 	| `std.Some "myr":
 		checkunset(p, rl.myr, "'pkg' already sepecified\n")
 		rl.myr = expect(p, myrlit(p), "expected myrddin literal after 'myr'\n")
@@ -186,7 +186,7 @@ const addtok = {p, rl, name, isregex, pat, skip
 
 	std.bsput(p.isterm, tok.sym)
 	std.htput(rl.stypes, tok.sym, "_str")
-	rl.toks = std.slpush(rl.toks, tok)
+	std.slpush(&rl.toks, tok)
 }
 
 const rule = {p, rl
@@ -243,10 +243,10 @@ const rulebody = {p, rl, lhs -> rule#
 		if peekc(p) == '"'
 			pat = expect(p, quoted(p, '"'), "expected token regex\n")
 			addtok(p, rl, pat, false, pat, false)
-			rhs = std.slpush(rhs, symid(p, pat))
+			std.slpush(&rhs, symid(p, pat))
 		else
 			match word(p)
-			| `std.Some w:	rhs = std.slpush(rhs, symid(p, w))
+			| `std.Some w:	std.slpush(&rhs, symid(p, w))
 			| `std.None:	break
 			;;
 		;;
@@ -450,7 +450,7 @@ const iseof = {p
 
 const addrule = {p, rl, r, name
 	r.id = rl.rules.len + 1
-	rl.rules = std.slpush(rl.rules, r)
+	std.slpush(&rl.rules, r)
 }
 
 const checkunset = {p, s, msg

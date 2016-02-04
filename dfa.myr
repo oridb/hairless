@@ -31,8 +31,9 @@ const mkdfa = {nfa
 	statemap = std.mkht(sethash, seteq)
 
 	/* the failure state and the initial states are constructed */
-	states = std.slpush([][:], std.mkbs())
-	states = std.slpush(states, std.mkbs())
+	states = [][:]
+	std.slpush(&states, std.mkbs())
+	std.slpush(&states, std.mkbs())
 
 	/* set up our initial NFA state */
 	std.bsput(states[1], 0)
@@ -60,11 +61,11 @@ const mkdfa = {nfa
 				p++
 				std.htput(statemap, e, p)
 				/* add new state */
-				states = std.slpush(states, e)
-				dfa.trans = std.slpush(dfa.trans, [][:])
+				std.slpush(&states, e)
+				std.slpush(&dfa.trans, [][:])
 
 				/* add the transition to it */
-				dfa.trans[j] = std.slpush(dfa.trans[j], (c, p))
+				std.slpush(&dfa.trans[j], (c, p))
 			| `std.Some st:
 				/*
 				otherwise, we've already got it -- add a transition if
@@ -72,7 +73,7 @@ const mkdfa = {nfa
 				*/
 				std.bsfree(e)
 				if st != 0
-					dfa.trans[j] = std.slpush(dfa.trans[j], (c, st))
+					std.slpush(&dfa.trans[j], (c, st))
 				;;
 			;;
 		;;

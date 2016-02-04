@@ -61,7 +61,7 @@ const addreduce = {rl, lr
 			;;
 			for sym = 0; sym < rl.nsym; sym++
 				if std.bshas(lr.follow[itm.rule.lhs], sym)
-					lr.reduce = std.slpush(lr.reduce, (i, itm.rule.id, sym))
+					std.slpush(&lr.reduce, (i, itm.rule.id, sym))
 				;;
 			;;
 		;;
@@ -130,7 +130,7 @@ const stgoto = {rl, lr, itm, sym
 		if dot != sym
 			continue
 		;;
-		items = std.slpush(items, [
+		std.slpush(&items, [
 			.rule = elt.rule,
 			.dot = elt.dot + 1])
 	;;
@@ -186,7 +186,7 @@ const stclosure = {rl, lr, itms
 				;;
 				changed = true
 				std.bsput(itms.has, r.id)
-				itms.items = std.slpush(itms.items, [.rule = r, .dot = 0])
+				std.slpush(&itms.items, [.rule = r, .dot = 0])
 				break
 			;;
 		;;
@@ -296,7 +296,7 @@ const addstate = {lr, st
 			-> (i, false)
 		;;
 	;;
-	lr.states = std.slpush(lr.states, st)
+	std.slpush(&lr.states, st)
 	-> (lr.states.len, true)
 }
 
@@ -310,7 +310,7 @@ const addedge = {lr, from, to, sym
 		;;
 		i++
 	;;
-	lr.shift = std.slpush(lr.shift, (from, to, sym))
+	std.slpush(&lr.shift, (from, to, sym))
 	-> (lr.shift.len, true)
 }
 
@@ -347,7 +347,7 @@ const augmented = {rl
 		.act = ""
 	])
 	std.htput(rl.symname, rule.lhs, ".s0")
-	rl.rules = std.slpush(rl.rules, rule)
+	std.slpush(&rl.rules, rule)
 	rl.nsym++
 	-> rule
 }
