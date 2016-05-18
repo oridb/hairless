@@ -72,7 +72,7 @@ const writedfa = {f, rl, dfa
 	bio.put(f, "\t\tmatch (state, str[off])\n")
 	for trans in dfa.trans
 		for (chr, next) in trans
-			bio.put(f, "\t\t| ({}, {}): /* {} */\n", st, chr, chr castto(char))
+			bio.put(f, "\t\t| ({}, {}): /* {} */\n", st, chr, (chr : char))
 			bio.put(f, "\t\t\tstate = {}\n", next)
 			match std.htget(dfa.accept, next)
 			| `std.Some tok:
@@ -112,7 +112,7 @@ const writelalr = {f, rl, lr
 
 	tab = std.slzalloc(lr.states.len)
 	for var i = 0; i < tab.len; i++
-		tab[i] = std.slzalloc(rl.nsym castto(std.size))
+		tab[i] = std.slzalloc((rl.nsym : std.size))
 	;;
 
 	for (src, dst, sym) in lr.shift
@@ -125,7 +125,7 @@ const writelalr = {f, rl, lr
 		elif tab[src][sym] < 0
 			std.put("state {}@{}: reduce/reduce conflict\n", src, rule)
 		else
-			tab[src][sym] = -rule castto(int)
+			tab[src][sym] = (-rule : int)
 		;;
 	;;
 

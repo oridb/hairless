@@ -54,7 +54,7 @@ const mkdfa = {nfa
 		/* loop through each byte value */
 		for c = 0; c < 256; c++
 			/* and add the states we can reach along this DFA state's NFA edges*/
-			e = dfaedge(dfa, nfa, states[j], j, c castto(byte))
+			e = dfaedge(dfa, nfa, states[j], j, (c : byte))
 			match std.htget(statemap, e)
 			| `std.None:
 				/* If we didn't have it, this is a new state */
@@ -194,7 +194,7 @@ const dfadump = {dfa
 	for edges in dfa.trans
 		std.put("\t{}:", st)
 		for (lbl, dst) in edges
-			std.put(" {}({}): {}", lbl castto(char), lbl, dst)
+			std.put(" {}({}): {}", (lbl : char), lbl, dst)
 		;;
 		match std.htget(dfa.accept, st)
 		| `std.Some sym:	std.put(" accept: {}", sym)

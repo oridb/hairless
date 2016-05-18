@@ -130,9 +130,9 @@ const re2nfa = {nfa, start, re
 				std.fatal("unicode ranges not yet supported\n")
 			;;
 			if r[0] < r[1]
-				trans(nfa, start, `Range (s, r[0] castto(byte), r[1] castto(byte)))
+				trans(nfa, start, `Range (s, (r[0] : byte), (r[1] : byte)))
 			else
-				trans(nfa, start, `Range (s, r[1] castto(byte), r[0] castto(byte)))
+				trans(nfa, start, `Range (s, (r[1] : byte), (r[0] : byte)))
 			;;
 		;;
 		-> s
@@ -178,9 +178,9 @@ const nfadump = {nfa
 			| `Eps st:
 				std.put("\t{} -> {} [label=\"ɛ\"]\n", i, st)
 			| `Byte (st, b):
-				std.put("\t{} -> {} [label=\"{}\"]\n", i, st, b castto(char))
+				std.put("\t{} -> {} [label=\"{}\"]\n", i, st, (b : char))
 			| `Range (st, lo, hi):
-				std.put("\t{} -> {} [label=\"{}-{}\"]\n", i, st, lo castto(char), hi castto(char))
+				std.put("\t{} -> {} [label=\"{}-{}\"]\n", i, st, (lo : char), (hi : char))
 			;;
 		;;
 	;;

@@ -199,8 +199,8 @@ const firstfollow = {rl, lr
 	var changed
 
 	lr.nullable = std.mkbs()
-	lr.first = std.slalloc(rl.nsym castto(std.size))
-	lr.follow = std.slalloc(rl.nsym castto(std.size))
+	lr.first = std.slalloc((rl.nsym : std.size))
+	lr.follow = std.slalloc((rl.nsym : std.size))
 	for i = 0; i < rl.nsym; i++
 		lr.first[i] = std.mkbs()
 		lr.follow[i] = std.mkbs()
