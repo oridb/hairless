@@ -99,11 +99,11 @@ const re2nfa = {nfa, start, re
 		s = re2nfa(nfa, start, l)
 		-> re2nfa(nfa, s, r)
 
-	| `regex.Star r:
+	| `regex.Star (r, false):
 		s = re2nfa(nfa, start, r)
 		trans(nfa, s, `Eps start)
 		-> start
-	| `regex.Plus r:
+	| `regex.Plus (r, false):
 		s = re2nfa(nfa, start, r)
 		t = re2nfa(nfa, s, r)
 		trans(nfa, t, `Eps s)
@@ -138,8 +138,8 @@ const re2nfa = {nfa, start, re
 		-> s
 	| `regex.Cap (id, r):
 		-> re2nfa(nfa, start, r)
-	| `regex.Rplus r:	std.fatal("reluctant operators not supported\n")
-	| `regex.Rstar r:	std.fatal("reluctant operators not supported\n")
+	| `regex.Plus (r, true):	std.fatal("reluctant operators not supported\n")
+	| `regex.Star (r, true):	std.fatal("reluctant operators not supported\n")
 	| `regex.Bol:	std.fatal("'^' specifier not supported\n")
 	| `regex.Eol:	std.fatal("'$' specifier not supported\n")
 	| `regex.Bow:	std.fatal("'\\<' specifier not supported\n")
