@@ -6,7 +6,7 @@ use "types.use"
 pkg pg =
 	const writehdr	: (f : bio.file#, rules : rules# -> void)
 	const writedfa	: (f : bio.file#, rules : rules#, dfa : dfa# -> void)
-	const writelalr	: (f : bio.file#, rules : rules#, lr : lalr# -> void)
+	const writeslr	: (f : bio.file#, rules : rules#, lr : slr# -> void)
 ;;
 
 const writehdr = {f, rules
@@ -105,7 +105,7 @@ const writedfa = {f, rl, dfa
 	bio.put(f, "\n")
 }
 
-const writelalr = {f, rl, lr
+const writeslr = {f, rl, lr
 	var tab
 	var s, i
 	var okret, failret

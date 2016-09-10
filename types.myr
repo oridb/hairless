@@ -40,7 +40,7 @@ pkg pg =
 		skip	: std.bitset#
 	;;
 
-	type lalr = struct
+	type slr = struct
 		start	: sym
 		/* graph */
 		states	: state#[:]
