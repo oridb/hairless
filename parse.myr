@@ -1,6 +1,6 @@
 use std
 
-use "types.use"
+use "types"
 
 pkg pg =
 	const parse	: (f : byte[:] -> rules#)

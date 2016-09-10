@@ -1,7 +1,7 @@
 use std
 use bio
 
-use "types.use"
+use "types"
 
 pkg pg =
 	const writehdr	: (f : bio.file#, rules : rules# -> void)

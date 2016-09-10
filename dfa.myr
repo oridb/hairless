@@ -1,8 +1,8 @@
 use std
 use regex
 
-use "types.use"
-use "nfa.use"
+use "types"
+use "nfa"
 
 pkg pg =
 	const mkdfa	: (nfa : nfa# -> dfa#)

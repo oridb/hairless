@@ -1,12 +1,12 @@
 use std
 use bio
 
-use "dfa.use"
-use "slr.use"
-use "nfa.use"
-use "parse.use"
-use "types.use"
-use "write.use"
+use "dfa"
+use "slr"
+use "nfa"
+use "parse"
+use "types"
+use "write"
 
 const main = {args
 	var tab, dfa, nfa

@@ -1,7 +1,7 @@
 use std
 use regex
 
-use "types.use"
+use "types"
 
 pkg pg =
 	const mknfa	: (rl : rules# -> nfa#)
