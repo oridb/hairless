@@ -15,7 +15,7 @@ calc<int>
 
 asnexpr<int>
 	: id "=" expr {
-			std.htput(dict, a0, a2)
+			std.htput(dict, std.sldup(a0), a2)
                         -> a2
 		}
 	| expr {
