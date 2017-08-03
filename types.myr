@@ -40,10 +40,11 @@ pkg pg =
 		skip	: std.bitset#
 	;;
 
-	type slr = struct
+	type lalr = struct
 		start	: sym
+
 		/* graph */
-		states	: state#[:]
+		items	: item#[:]
 		shift	: (int, int, sym)[:]
 		reduce	: (int, int, sym)[:]
 
@@ -52,15 +53,15 @@ pkg pg =
 		nullable: std.bitset#
 	;;
 
-	type state = struct
-		items	: item[:]
+	type item = struct
+		terms	: term[:]
 		has	: std.bitset#
 	;;
 
-	type item = struct
+	type term = struct
 		rule	: rule#
 		dot	: int
-		peek	: sym
+		look	: std.bitset#
 	;;
 
 

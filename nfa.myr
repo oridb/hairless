@@ -24,7 +24,7 @@ const mknfa = {rl
 		.accept = std.mkht(std.inthash, std.inteq),
 	])
 	addstate(nfa)	/* initial state */
-	for t in rl.toks
+	for t : rl.toks
 		if t.isregex
 			addre(nfa, t)
 		else
@@ -42,7 +42,7 @@ const mknfa = {rl
 const addstr = {nfa, str
 	st = addstate(nfa)
 	trans(nfa, 0, `Eps st)
-	for b in str.pat
+	for b : str.pat
 		new = addstate(nfa)
 		trans(nfa, st, `Byte (new, b))
 		st = new
@@ -124,7 +124,7 @@ const re2nfa = {nfa, start, re
 
 	| `regex.Ranges rl:
 		s = addstate(nfa)
-		for r in rl
+		for r : rl
 			/* FIXME: this is preventing '.' from working. */
 			if r[0] > 0x7f || r[1] > 0x7f
 				std.fatal("unicode ranges not yet supported\n")
@@ -163,7 +163,7 @@ const nfadump = {nfa
 	keys = std.htkeys(nfa.accept)
 	std.put("accept = {{")
 	sep = ""
-	for k in keys
+	for k : keys
 		std.put("{}=>{}{}", k, std.htgetv(nfa.accept, k, -1), sep)
 		sep = ", "
 	;;
@@ -173,7 +173,7 @@ const nfadump = {nfa
 	std.put("digraph g = {{\n")
 	for i = 0; i < nfa.edges.len; i++
 		std.put("\t/* st = {}, accept = {} */\n", i, std.hthas(nfa.accept, i))
-		for tr in nfa.edges[i]
+		for tr : nfa.edges[i]
 			match tr
 			| `Eps st:
 				std.put("\t{} -> {} [label=\"ɛ\"]\n", i, st)

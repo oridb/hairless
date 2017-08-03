@@ -110,12 +110,12 @@ follows all consuming edges for a single NFA state
 */
 const nfaedge = {dfa, nfa, st, dstate, byte, set
 	addaccept(dfa, nfa, st, dstate)
-	for `Byte (s, b) in nfa.edges[st]
+	for `Byte (s, b) : nfa.edges[st]
 		if b == byte 
 			std.bsput(set, s)
 		;;
 	;;
-	for `Range (s, lo, hi) in nfa.edges[st]
+	for `Range (s, lo, hi) : nfa.edges[st]
 		if byte >= lo && byte <= hi
 			std.bsput(set, s)
 		;;
@@ -143,7 +143,7 @@ whether they are accepting states.
 */
 const stateclosure = {dfa, nfa, state, dstate, set
 	addaccept(dfa, nfa, state, dstate)
-	for `Eps next in nfa.edges[state]
+	for `Eps next : nfa.edges[state]
 		if std.bshas(set, next)
 			continue
 		;;
@@ -191,9 +191,9 @@ const dfadump = {dfa
 
 	st = 0
 	std.put("dfa:\n")
-	for edges in dfa.trans
+	for edges : dfa.trans
 		std.put("\t{}:", st)
-		for (lbl, dst) in edges
+		for (lbl, dst) : edges
 			std.put(" {}({}): {}", (lbl : char), lbl, dst)
 		;;
 		match std.htget(dfa.accept, st)

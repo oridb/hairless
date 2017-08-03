@@ -2,7 +2,7 @@ use std
 use bio
 
 use "dfa"
-use "slr"
+use "lalr"
 use "nfa"
 use "parse"
 use "types"
@@ -20,21 +20,21 @@ const main = {args
 		.opts = [[.opt='d', .desc="turn on debugging"]][:]
 	])
 
-	for o in cmd.opts
+	for o : cmd.opts
 		match o
 		| ('d', ""):	pg.opt_dbg = true
 		| _:	std.fatal("unreachable")
 		;;
 	;;
 
-	for f in cmd.args
+	for f : cmd.args
 		/* read the input file */
 		rules = pg.parse(f)
 
 		/* generate the various tables */
 		nfa = pg.mknfa(rules)
 		dfa = pg.mkdfa(nfa)
-		tab = pg.genslrtab(rules)
+		tab = pg.genlalrtab(rules)
 
 		/* and output */
 		path = swapsuffix(f, ".hl", ".myr")

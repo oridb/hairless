@@ -6,13 +6,13 @@ use "types"
 pkg pg =
 	const writehdr	: (f : bio.file#, rules : rules# -> void)
 	const writedfa	: (f : bio.file#, rules : rules#, dfa : dfa# -> void)
-	const writeslr	: (f : bio.file#, rules : rules#, lr : slr# -> void)
+	const writeslr	: (f : bio.file#, rules : rules#, lr : lalr# -> void)
 ;;
 
 const writehdr = {f, rules
 	var tags, ty, ret
 
-	for u in rules.uses
+	for u : rules.uses
 		bio.put(f, "use {}\n", u)
 	;;
 
@@ -33,12 +33,12 @@ const writehdr = {f, rules
 	tags = std.htkeys(rules.types)
 	bio.put(f, "type _symval = union\n")
 	bio.put(f, "\t`Sym__void\n")
-	for t in tags
+	for t : tags
 		ty = std.htgetv(rules.types, t, "")
 		bio.put(f, "\t`Sym_{} {}\n", t, ty)
 	;;
 	bio.put(f, ";;\n\n")
-	for t in tags
+	for t : tags
 		ty = std.htgetv(rules.types, t, "")
 		bio.put(f, "const extract_{} = {{val : _symval -> {}\n", t, ty)
 		bio.put(f, "\tmatch val\n")
@@ -70,8 +70,8 @@ const writedfa = {f, rl, dfa
 	bio.put(f, "\tskip=false\n")
 	bio.put(f, "\twhile off < str.len\n")
 	bio.put(f, "\t\tmatch (state, str[off])\n")
-	for trans in dfa.trans
-		for (chr, next) in trans
+	for trans : dfa.trans
+		for (chr, next) : trans
 			bio.put(f, "\t\t| ({}, {}): /* {} */\n", st, chr, (chr : char))
 			bio.put(f, "\t\t\tstate = {}\n", next)
 			match std.htget(dfa.accept, next)
@@ -110,16 +110,16 @@ const writeslr = {f, rl, lr
 	var s, i
 	var okret, failret
 
-	tab = std.slzalloc(lr.states.len)
+	tab = std.slzalloc(lr.items.len)
 	for var i = 0; i < tab.len; i++
 		tab[i] = std.slzalloc((rl.nsym : std.size))
 	;;
 
-	for (src, dst, sym) in lr.shift
+	for (src, dst, sym) : lr.shift
 		tab[src][sym] = dst
 	;;
 
-	for (src, rule, sym) in lr.reduce
+	for (src, rule, sym) : lr.reduce
 		if tab[src][sym] > 0
 			std.put("state {}@{}: shift/reduce conflict\n", src, rule)
 		elif tab[src][sym] < 0
@@ -137,9 +137,9 @@ const writeslr = {f, rl, lr
 	bio.put(f, "*/\n")
 
 	i = 0
-	for row in tab
+	for row : tab
 		bio.put(f, "/*{}*/\t[", i++)
-		for col in row
+		for col : row
 			bio.put(f, "\t{},", col)
 		;;
 		bio.put(f, "],\n")
@@ -148,14 +148,14 @@ const writeslr = {f, rl, lr
 
 	bio.put(f, "const rulelen = [\n")
 	bio.put(f, "\t-1, /* invalid rule */\n")
-	for r in rl.rules
+	for r : rl.rules
 		bio.put(f, "\t{},\n", r.rhs.len)
 	;;
 	bio.put(f, "]\n")
 
 	bio.put(f, "const rulelhs = [\n")
 	bio.put(f, "\t-1, /* invalid rule */\n")
-	for r in rl.rules
+	for r : rl.rules
 		bio.put(f, "\t{},\n", r.lhs)
 	;;
 	bio.put(f, "]\n")
@@ -209,14 +209,14 @@ const writeslr = {f, rl, lr
 }
 
 const actions = {f, rl
-	for r in rl.rules
+	for r : rl.rules
 		bio.put(f, "const act{} = {{", r.id)
 		actargs(f, rl, r)
 		bio.put(f, "{}}}\n", r.act)
 	;;
 	bio.put(f, "const reduceaction = {{stk, id\n")
 	bio.put(f, "\tmatch id\n")
-	for r in rl.rules
+	for r : rl.rules
 		bio.put(f, "\t| {}:\n", r.id)
 		match std.htget(rl.stypes, r.lhs)
 		| `std.Some tag:

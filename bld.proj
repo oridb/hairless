@@ -1,7 +1,7 @@
 bin hairless =
 	dfa.myr
 	nfa.myr
-	slr.myr
+	lalr.myr
 	main.myr
 	parse.myr
 	types.myr
