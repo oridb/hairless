@@ -29,8 +29,8 @@ const parse = {f
 		.infile = f,
 		.isterm = p.isterm,
 		.symname = p.symname,
-		.types = std.mkht(std.strhash, std.streq),
-		.stypes = std.mkht(std.inthash, std.inteq)
+		.types = std.mkht(),
+		.stypes = std.mkht()
 	])
 
 	std.htput(rl.types, "_str", "byte[:]")
@@ -57,8 +57,8 @@ const mkparser = {path
 	p = std.mk([
 		.line = 1,
 		.fname = std.sldup(path),
-		.symid = std.mkht(std.strhash, std.streq),
-		.symname = std.mkht(std.inthash, std.inteq),
+		.symid = std.mkht(),
+		.symname = std.mkht(),
 		.isterm = std.mkbs(),
 	])
 	match std.slurp(path)
@@ -423,7 +423,7 @@ const matchc = {p, c
 	if p.rest.len == 0
 		-> false
 	;;
-	(chr, s) = std.strstep(p.rest)
+	(chr, s) = std.charstep(p.rest)
 	if c == chr
 		p.rest = s
 		-> true
@@ -439,7 +439,7 @@ const peekc = {p
 const getc = {p
 	var c, s
 
-	(c, s) = std.strstep(p.rest)
+	(c, s) = std.charstep(p.rest)
 	p.rest = s
 	-> c
 }

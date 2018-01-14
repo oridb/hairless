@@ -19,7 +19,7 @@ const mkdfa = {nfa
 	var dfa
 
 	dfa = std.mk([
-		.accept = std.mkht(std.inthash, std.inteq),
+		.accept = std.mkht(),
 		.trans = std.slzalloc(2),
 		.skip = nfa.skip,
 	])
@@ -28,7 +28,7 @@ const mkdfa = {nfa
 	We use this for fastish lookups to check if the state
 	has already been seen
 	*/
-	statemap = std.mkht(sethash, seteq)
+	statemap = std.mkht()
 
 	/* the failure state and the initial states are constructed */
 	states = [][:]
@@ -175,15 +175,6 @@ const addaccept = {dfa, nfa, st, dstate
 			std.htput(dfa.accept, dstate, sym)
 		;;
 	;;
-}
-
-/* just useful utilities for hashing/comparing sets */
-const sethash = {set
-	-> std.slhash(set.bits)
-}
-
-const seteq = {a, b
-	-> std.sleq(a.bits, b.bits)
 }
 
 const dfadump = {dfa

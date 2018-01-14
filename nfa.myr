@@ -21,7 +21,7 @@ const mknfa = {rl
 
 	nfa = std.mk([
 		.skip = std.mkbs(),
-		.accept = std.mkht(std.inthash, std.inteq),
+		.accept = std.mkht(),
 	])
 	addstate(nfa)	/* initial state */
 	for t : rl.toks
